@@ -39,7 +39,7 @@ ENABLE_STABILITY_ALERTS = True   # Set False to disable stability alerts
 
 # 📊 HOURLY REPORTS
 ENABLE_HOURLY_REPORTS = True     # Set False to disable hourly trend reports
-HOURLY_REPORT_PERIODS = ["AKGSMA_MORNING_RUSH", "ACTIVE_TRADING", "EVENING_UPDATE"]  # Which periods to send hourly reports
+HOURLY_REPORT_PERIODS = ["AKGSMA_MORNING_RUSH", "ACTIVE_TRADING", "EVENING_UPDATE"]
 
 # 🚨 PRIORITY LEVELS (when to send high priority vs normal)
 HIGH_PRIORITY_RUPEES = 25        # ₹25+ = High priority notification
@@ -70,17 +70,17 @@ PAGE_LOAD_DELAY_MIN = 2.0        # Minimum page load wait time
 PAGE_LOAD_DELAY_MAX = 3.0        # Maximum page load wait time
 
 # 🏷️ NOTIFICATION CUSTOMIZATION
-NOTIFICATION_TITLE = "Kerala 24K Gold Tracker"  # Title for notifications
-ENABLE_EMOJI_IN_MESSAGES = True                 # Set False for plain text
-INCLUDE_PERIOD_CONTEXT = True                   # Include market period info in messages
+NOTIFICATION_TITLE = "Kerala 24K Gold Tracker"
+ENABLE_EMOJI_IN_MESSAGES = True
+INCLUDE_PERIOD_CONTEXT = True
 
 # 🔍 WEEKEND SETTINGS
-WEEKEND_THRESHOLD_RUPEES = 30    # Higher threshold on weekends
-WEEKEND_THRESHOLD_PERCENT = 0.3  # Higher threshold on weekends
-ENABLE_WEEKEND_REDUCED_SENSITIVITY = True  # Reduce sensitivity on weekends
+WEEKEND_THRESHOLD_RUPEES = 30
+WEEKEND_THRESHOLD_PERCENT = 0.3
+ENABLE_WEEKEND_REDUCED_SENSITIVITY = True
 
 # ================================================================================================
-# 🚀 TRACKER CODE STARTS HERE - DON'T EDIT BELOW UNLESS YOU KNOW WHAT YOU'RE DOING
+# 🚀 TRACKER CODE STARTS HERE
 # ================================================================================================
 
 import json
@@ -176,13 +176,13 @@ class ConfigurableKeralaGoldTracker:
             return {
                 'rupees': TRADING_THRESHOLD_RUPEES * weekend_multiplier,
                 'percent': TRADING_THRESHOLD_PERCENT * weekend_multiplier,
-                'micro_rupees': 999  # No micro alerts during regular trading
+                'micro_rupees': 999
             }
         else:  # OFF_HOURS
             return {
                 'rupees': OFFHOURS_THRESHOLD_RUPEES * weekend_multiplier,
                 'percent': OFFHOURS_THRESHOLD_PERCENT * weekend_multiplier,
-                'micro_rupees': 999  # No micro alerts during off hours
+                'micro_rupees': 999
             }
     
     def scrape_rate(self):
@@ -227,6 +227,112 @@ class ConfigurableKeralaGoldTracker:
                 return None
                 
         except Exception as e:
+            print(f"❌ Pushover error: {e}")
+    
+    def send_ntfy(self, message, priority):
+        """Send ntfy.sh notification"""
+        try:
+            url = f"https://ntfy.sh/{self.ntfy_topic}"
+            
+            priority_map = {"low": "min", "normal": "default", "high": "high"}
+            
+            if ENABLE_EMOJI_IN_MESSAGES:
+                tags = "gold,kerala,fire,money" if priority == "high" else "gold,kerala,chart_with_upwards_trend"
+            else:
+                tags = "gold,kerala"
+            
+            headers = {
+                'Title': NOTIFICATION_TITLE,
+                'Priority': priority_map.get(priority, "default"),
+                'Tags': tags
+            }
+            
+            response = requests.post(url, data=message, headers=headers, timeout=10)
+            if response.status_code == 200:
+                print("✅ ntfy sent")
+            else:
+                print(f"❌ ntfy failed: {response.status_code}")
+                
+        except Exception as e:
+            print(f"❌ ntfy error: {e}")
+    
+    def save_data(self, data):
+        """Save data with configured retention settings"""
+        os.makedirs('data', exist_ok=True)
+        
+        # Save latest
+        with open('data/latest_rate.json', 'w') as f:
+            json.dump(data, f, indent=2)
+        
+        # Save to history with configured retention
+        history_file = 'data/rate_history.json'
+        history = []
+        
+        if os.path.exists(history_file):
+            with open('data/rate_history.json', 'r') as f:
+                history = json.load(f)
+        
+        history.append(data)
+        history = history[-HISTORY_ENTRIES_TO_KEEP:]
+        
+        with open('data/rate_history.json', 'w') as f:
+            json.dump(history, f, indent=2)
+        
+        # Save configuration summary for reference
+        config_summary = {
+            'last_updated': data['timestamp'],
+            'thresholds': {
+                'akgsma_rupees': AKGSMA_THRESHOLD_RUPEES,
+                'akgsma_percent': AKGSMA_THRESHOLD_PERCENT,
+                'evening_rupees': EVENING_THRESHOLD_RUPEES,
+                'evening_percent': EVENING_THRESHOLD_PERCENT,
+                'trading_rupees': TRADING_THRESHOLD_RUPEES,
+                'trading_percent': TRADING_THRESHOLD_PERCENT,
+                'offhours_rupees': OFFHOURS_THRESHOLD_RUPEES,
+                'offhours_percent': OFFHOURS_THRESHOLD_PERCENT,
+                'micro_alerts': MICRO_ALERT_RUPEES if ENABLE_MICRO_ALERTS else 'disabled',
+                'rapid_alerts': RAPID_MOVEMENT_THRESHOLD if ENABLE_RAPID_ALERTS else 'disabled'
+            },
+            'features': {
+                'micro_alerts': ENABLE_MICRO_ALERTS,
+                'rapid_alerts': ENABLE_RAPID_ALERTS,
+                'trend_alerts': ENABLE_TREND_ALERTS,
+                'stability_alerts': ENABLE_STABILITY_ALERTS,
+                'hourly_reports': ENABLE_HOURLY_REPORTS,
+                'weekend_reduced_sensitivity': ENABLE_WEEKEND_REDUCED_SENSITIVITY
+            },
+            'current_period': data['market_period'],
+            'is_weekend': data['is_weekend']
+        }
+        
+        with open('data/config_summary.json', 'w') as f:
+            json.dump(config_summary, f, indent=2)
+
+if __name__ == "__main__":
+    print("🔧 Starting Configurable Kerala Gold Tracker...")
+    print("=" * 60)
+    print("📊 CURRENT CONFIGURATION:")
+    print(f"• AKGSMA Threshold: ≥₹{AKGSMA_THRESHOLD_RUPEES} ({AKGSMA_THRESHOLD_PERCENT}%)")
+    print(f"• Evening Threshold: ≥₹{EVENING_THRESHOLD_RUPEES} ({EVENING_THRESHOLD_PERCENT}%)")
+    print(f"• Trading Threshold: ≥₹{TRADING_THRESHOLD_RUPEES} ({TRADING_THRESHOLD_PERCENT}%)")
+    print(f"• Off Hours Threshold: ≥₹{OFFHOURS_THRESHOLD_RUPEES} ({OFFHOURS_THRESHOLD_PERCENT}%)")
+    print(f"• Micro Alerts: {'✅ Enabled' if ENABLE_MICRO_ALERTS else '❌ Disabled'} (≥₹{MICRO_ALERT_RUPEES})")
+    print(f"• Rapid Alerts: {'✅ Enabled' if ENABLE_RAPID_ALERTS else '❌ Disabled'} (≥₹{RAPID_MOVEMENT_THRESHOLD} in {RAPID_MOVEMENT_WINDOW_MINUTES}min)")
+    print(f"• Trend Alerts: {'✅ Enabled' if ENABLE_TREND_ALERTS else '❌ Disabled'} (≥₹{TREND_REVERSAL_THRESHOLD})")
+    print(f"• Stability Alerts: {'✅ Enabled' if ENABLE_STABILITY_ALERTS else '❌ Disabled'} ({STABILITY_ALERT_MINUTES}min)")
+    print(f"• Hourly Reports: {'✅ Enabled' if ENABLE_HOURLY_REPORTS else '❌ Disabled'}")
+    print("=" * 60)
+    
+    tracker = ConfigurableKeralaGoldTracker()
+    result = tracker.scrape_rate()
+    
+    if result:
+        print(f"✅ Success: ₹{result['rate']} - {result['market_period']}")
+        print(f"📊 Weekend Mode: {result['is_weekend']}")
+    else:
+        print("❌ Tracking failed")
+    
+    print("\n🔧 To customize alerts, edit the configuration variables at the top of this file!"):
             self.send_error_notification(f"Error ({self.current_period}): {str(e)}")
             return None
         finally:
@@ -310,28 +416,28 @@ class ConfigurableKeralaGoldTracker:
                 priority = "normal"
                 notification_type = ""
                 
-                # 1. Main threshold check
+                # Main threshold check
                 if abs(change) >= thresholds['rupees'] or abs(change_percent) >= thresholds['percent']:
                     should_notify = True
                     priority = "high" if (abs(change) >= HIGH_PRIORITY_RUPEES or abs(change_percent) >= HIGH_PRIORITY_PERCENT) else "normal"
                     notification_type = f"📊 Main Alert ({current_period.replace('_', ' ').title()})"
                     print(f"📊 Main alert: ₹{change:.0f} (threshold: ₹{thresholds['rupees']:.0f})")
                 
-                # 2. Micro alerts (if enabled and in active periods)
+                # Micro alerts
                 elif ENABLE_MICRO_ALERTS and abs(change) >= thresholds['micro_rupees']:
                     should_notify = True
                     priority = "low"
                     notification_type = "📱 Micro Alert"
                     print(f"📱 Micro alert: ₹{change:.0f}")
                 
-                # 3. Rapid movement detection (if enabled)
+                # Rapid movement detection
                 elif ENABLE_RAPID_ALERTS and minutes_since_last <= RAPID_MOVEMENT_WINDOW_MINUTES and abs(change) >= RAPID_MOVEMENT_THRESHOLD:
                     should_notify = True
                     priority = "high"
                     notification_type = "⚡ Rapid Movement"
                     print(f"⚡ Rapid movement: ₹{change:.0f} in {minutes_since_last:.0f} min")
                 
-                # 4. Trend reversal detection (if enabled)
+                # Trend reversal detection
                 elif ENABLE_TREND_ALERTS:
                     direction_change = self.detect_direction_change(current_rate)
                     if direction_change and abs(change) >= TREND_REVERSAL_THRESHOLD:
@@ -340,7 +446,7 @@ class ConfigurableKeralaGoldTracker:
                         notification_type = f"🔄 Trend Reversal ({direction_change})"
                         print(f"🔄 Trend reversal: {direction_change}")
                 
-                # 5. Stability alerts (if enabled)
+                # Stability alerts
                 elif ENABLE_STABILITY_ALERTS and change == 0 and minutes_since_last >= STABILITY_ALERT_MINUTES:
                     if current_period in ["AKGSMA_MORNING_RUSH", "EVENING_UPDATE"]:
                         should_notify = True
@@ -358,7 +464,7 @@ class ConfigurableKeralaGoldTracker:
                         priority, notification_type, current_period, minutes_since_last
                     )
                 
-                # Hourly reports (if enabled)
+                # Hourly reports
                 if ENABLE_HOURLY_REPORTS and self.should_send_hourly_update():
                     self.send_hourly_trend_update()
                     
@@ -400,8 +506,7 @@ class ConfigurableKeralaGoldTracker:
         if self.current_period not in HOURLY_REPORT_PERIODS:
             return False
         
-        # Send every hour during configured periods
-        if self.ist_time.minute <= 5:  # First 5 minutes of hour
+        if self.ist_time.minute <= 5:
             try:
                 os.makedirs('data', exist_ok=True)
                 hour_key = self.ist_time.strftime('%Y-%m-%d-%H')
@@ -423,7 +528,6 @@ class ConfigurableKeralaGoldTracker:
     def send_configured_alert(self, current_rate, previous_rate, change, change_percent, priority, notification_type, period, minutes_since):
         """Send alert using configured message format"""
         
-        # Use configured emoji setting
         if ENABLE_EMOJI_IN_MESSAGES:
             direction = "📈" if change > 0 else "📉" if change < 0 else "➡️"
             period_emoji = {"AKGSMA_MORNING_RUSH": "🌅", "EVENING_UPDATE": "🌆", "ACTIVE_TRADING": "📊", "OFF_HOURS": "🌙"}
@@ -432,7 +536,6 @@ class ConfigurableKeralaGoldTracker:
             direction = "UP" if change > 0 else "DOWN" if change < 0 else "STABLE"
             emoji = ""
         
-        # Handle stability messages
         if abs(change) == 0:
             message = f"""{emoji} {NOTIFICATION_TITLE}
             
@@ -444,7 +547,6 @@ Time: {self.ist_time.strftime('%I:%M %p IST')}"""
             if INCLUDE_PERIOD_CONTEXT:
                 message += f"\n\n💡 Stability during {period.lower().replace('_', ' ')} noted."
         else:
-            # Determine change magnitude
             if abs(change) >= 50:
                 magnitude = "MAJOR"
             elif abs(change) >= 25:
@@ -487,7 +589,6 @@ Time: {self.ist_time.strftime('%I:%M %p IST')}"""
                 current_rate = rates[-1]
                 hourly_change = current_rate - opening_rate
                 
-                # Determine trend
                 if hourly_change > 10:
                     trend = "📈 BULLISH" if ENABLE_EMOJI_IN_MESSAGES else "BULLISH"
                 elif hourly_change < -10:
@@ -634,144 +735,4 @@ Will retry on next scheduled run."""
             else:
                 print(f"❌ Pushover failed: {response.status_code}")
                 
-        except Exception as e:
-            print(f"❌ Pushover error: {e}")
-    
-    def send_ntfy(self, message, priority):
-        """Send ntfy.sh notification"""
-        try:
-            url = f"https://ntfy.sh/{self.ntfy_topic}"
-            
-            priority_map = {"low": "min", "normal": "default", "high": "high"}
-            
-            if ENABLE_EMOJI_IN_MESSAGES:
-                tags = "gold,kerala,fire,money" if priority == "high" else "gold,kerala,chart_with_upwards_trend"
-            else:
-                tags = "gold,kerala"
-            
-            headers = {
-                'Title': NOTIFICATION_TITLE,
-                'Priority': priority_map.get(priority, "default"),
-                'Tags': tags
-            }
-            
-            response = requests.post(url, data=message, headers=headers, timeout=10)
-            if response.status_code == 200:
-                print("✅ ntfy sent")
-            else:
-                print(f"❌ ntfy failed: {response.status_code}")
-                
-        except Exception as e:
-            print(f"❌ ntfy error: {e}")
-    
-    def save_data(self, data):
-        """Save data with configured retention settings"""
-        os.makedirs('data', exist_ok=True)
-        
-        # Save latest
-        with open('data/latest_rate.json', 'w') as f:
-            json.dump(data, f, indent=2)
-        
-        # Save to history with configured retention
-        history_file = 'data/rate_history.json'
-        history = []
-        
-        if os.path.exists(history_file):
-            with open('data/rate_history.json', 'r') as f:
-                history = json.load(f)
-        
-        history.append(data)
-        history = history[-HISTORY_ENTRIES_TO_KEEP:]  # Keep configured number of entries
-        
-        with open('data/rate_history.json', 'w') as f:
-            json.dump(history, f, indent=2)
-        
-        # Save configuration summary for reference
-        config_summary = {
-            'last_updated': data['timestamp'],
-            'thresholds': {
-                'akgsma_rupees': AKGSMA_THRESHOLD_RUPEES,
-                'akgsma_percent': AKGSMA_THRESHOLD_PERCENT,
-                'evening_rupees': EVENING_THRESHOLD_RUPEES,
-                'evening_percent': EVENING_THRESHOLD_PERCENT,
-                'trading_rupees': TRADING_THRESHOLD_RUPEES,
-                'trading_percent': TRADING_THRESHOLD_PERCENT,
-                'offhours_rupees': OFFHOURS_THRESHOLD_RUPEES,
-                'offhours_percent': OFFHOURS_THRESHOLD_PERCENT,
-                'micro_alerts': MICRO_ALERT_RUPEES if ENABLE_MICRO_ALERTS else 'disabled',
-                'rapid_alerts': RAPID_MOVEMENT_THRESHOLD if ENABLE_RAPID_ALERTS else 'disabled'
-            },
-            'features': {
-                'micro_alerts': ENABLE_MICRO_ALERTS,
-                'rapid_alerts': ENABLE_RAPID_ALERTS,
-                'trend_alerts': ENABLE_TREND_ALERTS,
-                'stability_alerts': ENABLE_STABILITY_ALERTS,
-                'hourly_reports': ENABLE_HOURLY_REPORTS,
-                'weekend_reduced_sensitivity': ENABLE_WEEKEND_REDUCED_SENSITIVITY
-            },
-            'current_period': data['market_period'],
-            'is_weekend': data['is_weekend']
-        }
-        
-        with open('data/config_summary.json', 'w') as f:
-            json.dump(config_summary, f, indent=2)
-
-# ================================================================================================
-# 🎯 QUICK CONFIGURATION PRESETS - UNCOMMENT ONE TO USE
-# ================================================================================================
-
-# # 🔥 ULTRA SENSITIVE PRESET (Get notified for almost everything)
-# AKGSMA_THRESHOLD_RUPEES = 5
-# AKGSMA_THRESHOLD_PERCENT = 0.05
-# EVENING_THRESHOLD_RUPEES = 5
-# EVENING_THRESHOLD_PERCENT = 0.05
-# TRADING_THRESHOLD_RUPEES = 10
-# TRADING_THRESHOLD_PERCENT = 0.1
-# MICRO_ALERT_RUPEES = 3
-# ENABLE_MICRO_ALERTS = True
-
-# # 📊 BALANCED PRESET (Good balance of alerts and noise)
-# AKGSMA_THRESHOLD_RUPEES = 15
-# AKGSMA_THRESHOLD_PERCENT = 0.15
-# EVENING_THRESHOLD_RUPEES = 15
-# EVENING_THRESHOLD_PERCENT = 0.15
-# TRADING_THRESHOLD_RUPEES = 25
-# TRADING_THRESHOLD_PERCENT = 0.25
-# ENABLE_MICRO_ALERTS = False
-
-# # 🔕 CONSERVATIVE PRESET (Only major changes)
-# AKGSMA_THRESHOLD_RUPEES = 30
-# AKGSMA_THRESHOLD_PERCENT = 0.3
-# EVENING_THRESHOLD_RUPEES = 30
-# EVENING_THRESHOLD_PERCENT = 0.3
-# TRADING_THRESHOLD_RUPEES = 50
-# TRADING_THRESHOLD_PERCENT = 0.5
-# ENABLE_MICRO_ALERTS = False
-# ENABLE_RAPID_ALERTS = False
-# ENABLE_STABILITY_ALERTS = False
-
-if __name__ == "__main__":
-    print("🔧 Starting Configurable Kerala Gold Tracker...")
-    print("=" * 60)
-    print("📊 CURRENT CONFIGURATION:")
-    print(f"• AKGSMA Threshold: ≥₹{AKGSMA_THRESHOLD_RUPEES} ({AKGSMA_THRESHOLD_PERCENT}%)")
-    print(f"• Evening Threshold: ≥₹{EVENING_THRESHOLD_RUPEES} ({EVENING_THRESHOLD_PERCENT}%)")
-    print(f"• Trading Threshold: ≥₹{TRADING_THRESHOLD_RUPEES} ({TRADING_THRESHOLD_PERCENT}%)")
-    print(f"• Off Hours Threshold: ≥₹{OFFHOURS_THRESHOLD_RUPEES} ({OFFHOURS_THRESHOLD_PERCENT}%)")
-    print(f"• Micro Alerts: {'✅ Enabled' if ENABLE_MICRO_ALERTS else '❌ Disabled'} (≥₹{MICRO_ALERT_RUPEES})")
-    print(f"• Rapid Alerts: {'✅ Enabled' if ENABLE_RAPID_ALERTS else '❌ Disabled'} (≥₹{RAPID_MOVEMENT_THRESHOLD} in {RAPID_MOVEMENT_WINDOW_MINUTES}min)")
-    print(f"• Trend Alerts: {'✅ Enabled' if ENABLE_TREND_ALERTS else '❌ Disabled'} (≥₹{TREND_REVERSAL_THRESHOLD})")
-    print(f"• Stability Alerts: {'✅ Enabled' if ENABLE_STABILITY_ALERTS else '❌ Disabled'} ({STABILITY_ALERT_MINUTES}min)")
-    print(f"• Hourly Reports: {'✅ Enabled' if ENABLE_HOURLY_REPORTS else '❌ Disabled'}")
-    print("=" * 60)
-    
-    tracker = ConfigurableKeralaGoldTracker()
-    result = tracker.scrape_rate()
-    
-    if result:
-        print(f"✅ Success: ₹{result['rate']} - {result['market_period']}")
-        print(f"📊 Weekend Mode: {result['is_weekend']}")
-    else:
-        print("❌ Tracking failed")
-    
-    print("\n🔧 To customize alerts, edit the configuration variables at the top of this file!") "
+        except Exception as e
