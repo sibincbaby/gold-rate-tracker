@@ -1,27 +1,24 @@
-name: Kerala Gold Rate Tracker - Optimized for AKGSMA Schedule
+name: Kerala Gold Rate Tracker - Configurable with Caching
 
 on:
   schedule:
     # MORNING RUSH: Every 15 minutes during AKGSMA rate setting (9-11 AM IST)
-    # 9 AM IST = 3:30 AM UTC, 11 AM IST = 5:30 AM UTC
     - cron: '30,45 3 * * *'      # 9:00, 9:15 AM IST
     - cron: '0,15,30,45 4 * * *'  # 9:30, 9:45, 10:00, 10:15 AM IST
     - cron: '0,15,30 5 * * *'     # 10:30, 10:45, 11:00 AM IST
     
     # MARKET HOURS: Every 30 minutes during active trading (11 AM - 6 PM IST)
-    # 11 AM IST = 5:30 AM UTC, 6 PM IST = 12:30 PM UTC
-    - cron: '30 5-12 * * *'       # Every hour at :30 (11:30 AM - 6:00 PM IST)
-    - cron: '0 6-12 * * *'        # Every hour at :00 (11:30 AM - 6:00 PM IST)
+    - cron: '30 5-12 * * *'       # Every hour at :30
+    - cron: '0 6-12 * * *'        # Every hour at :00
     
     # EVENING RUSH: Every 15 minutes during evening updates (6-7 PM IST)
-    # 6 PM IST = 12:30 PM UTC, 7 PM IST = 1:30 PM UTC
     - cron: '30,45 12 * * *'      # 6:00, 6:15 PM IST
     - cron: '0,15,30 13 * * *'    # 6:30, 6:45, 7:00 PM IST
     
-    # OFF HOURS: Every 3 hours during low activity (7 PM - 9 AM IST)
+    # OFF HOURS: Every 3 hours during low activity
     - cron: '30 15,18,21,0 * * *' # 9:00 PM, 12:00 AM, 3:00 AM, 6:00 AM IST
     
-    # WEEKEND: Reduced frequency (every 4 hours)
+    # WEEKEND: Reduced frequency
     - cron: '0 2,6,10,14,18,22 * * 0,6'  # Every 4 hours on Sat/Sun
   
   workflow_dispatch: # Manual trigger
@@ -40,16 +37,17 @@ jobs:
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
       
-    - name: Set up Python
+    - name: Set up Python with caching
       uses: actions/setup-python@v4
       with:
         python-version: '3.11'
         cache: 'pip'
+        cache-dependency-path: 'requirements.txt'
         
-    - name: Install dependencies
+    - name: Install dependencies from requirements.txt
       run: |
         python -m pip install --upgrade pip
-        pip install selenium beautifulsoup4 requests
+        pip install -r requirements.txt
         
     - name: Setup Chrome
       uses: browser-actions/setup-chrome@latest
@@ -57,9 +55,9 @@ jobs:
     - name: Setup ChromeDriver
       uses: nanasess/setup-chromedriver@master
       
-    - name: Run Kerala-optimized scraper
+    - name: Run configurable Kerala scraper
       timeout-minutes: 6
-      run: python kerala_optimized_scraper.py
+      run: python scrape_with_notifications.py
       env:
         TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
