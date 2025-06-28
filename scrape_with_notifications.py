@@ -39,11 +39,11 @@ class GoldScraperWithNotifications:
     def scrape_rate(self):
         """Scrape current gold rate"""
         try:
-            print("🔍 Scraping Kerala gold rate...")
+            print("🔍 Scraping Kerala 24K gold rate...")
             self.driver.get(self.url)
             time.sleep(3)
             
-            rate = self.extract_rate()
+            rate = self.extract_24k_rate()
             
             if rate:
                 current_data = {
@@ -63,10 +63,10 @@ class GoldScraperWithNotifications:
                 # Save data
                 self.save_data(current_data)
                 
-                print(f"✅ Success: ₹{rate} per gram")
+                print(f"✅ Success: ₹{rate} per gram (24K)")
                 return current_data
             else:
-                self.send_error_notification("Failed to scrape gold rate")
+                self.send_error_notification("Failed to scrape 24K gold rate")
                 return None
                 
         except Exception as e:
@@ -75,45 +75,149 @@ class GoldScraperWithNotifications:
         finally:
             self.driver.quit()
     
-    def extract_rate(self):
-        """Extract gold rate from page"""
+    def extract_24k_rate(self):
+        """Extract 24K gold rate specifically"""
         try:
-            # Method 1: Look for 24K elements
-            elements = self.driver.find_elements(By.XPATH, "//*[contains(text(), '24K') or contains(text(), '24k')]")
-            for element in elements:
+            print("🔍 Looking for 24K gold rate...")
+            
+            # Method 1: Look for specific 24K patterns in the page source
+            page_source = self.driver.page_source
+            
+            # Pattern 1: "24K Gold /g" followed by price (most specific)
+            pattern1 = r'24K\s+Gold\s*/g.*?₹\s*([\d,]+)'
+            match1 = re.search(pattern1, page_source, re.IGNORECASE | re.DOTALL)
+            if match1:
+                rate = float(match1.group(1).replace(',', ''))
+                print(f"✅ Found 24K rate via pattern 1: ₹{rate}")
+                return rate
+            
+            # Pattern 2: Look for table/div structure with 24K
+            rate = self.extract_from_elements()
+            if rate:
+                return rate
+            
+            # Pattern 3: More flexible patterns
+            patterns = [
+                r'24K.*?₹\s*([\d,]+)',
+                r'24\s*Karat.*?₹\s*([\d,]+)', 
+                r'24\s*Carat.*?₹\s*([\d,]+)',
+                r'24k.*?₹\s*([\d,]+)'
+            ]
+            
+            for i, pattern in enumerate(patterns, 3):
+                match = re.search(pattern, page_source, re.IGNORECASE | re.DOTALL)
+                if match:
+                    rate = float(match.group(1).replace(',', ''))
+                    print(f"✅ Found 24K rate via pattern {i}: ₹{rate}")
+                    return rate
+            
+            # If no 24K found, log what we did find
+            print("❌ No 24K rate found. Checking what's available...")
+            self.debug_available_rates(page_source)
+            
+        except Exception as e:
+            print(f"❌ Extraction error: {e}")
+        
+        return None
+    
+    def extract_from_elements(self):
+        """Extract rate by finding 24K elements specifically"""
+        try:
+            # Look for elements containing "24K" text
+            elements_24k = self.driver.find_elements(By.XPATH, "//*[contains(translate(text(), 'k', 'K'), '24K')]")
+            
+            for element in elements_24k:
                 text = element.text
+                print(f"🔍 Found 24K element: {text}")
+                
+                # Check if this element or its siblings contain a price
                 if '₹' in text:
                     match = re.search(r'₹\s*([\d,]+)', text)
                     if match:
-                        return float(match.group(1).replace(',', ''))
+                        rate = float(match.group(1).replace(',', ''))
+                        print(f"✅ Found rate in same element: ₹{rate}")
+                        return rate
                 
-                # Check parent
+                # Check parent element
                 try:
-                    parent_text = element.find_element(By.XPATH, "..").text
-                    if '₹' in parent_text:
+                    parent = element.find_element(By.XPATH, "..")
+                    parent_text = parent.text
+                    if '₹' in parent_text and '24K' in parent_text:
                         match = re.search(r'₹\s*([\d,]+)', parent_text)
                         if match:
-                            return float(match.group(1).replace(',', ''))
+                            rate = float(match.group(1).replace(',', ''))
+                            print(f"✅ Found rate in parent element: ₹{rate}")
+                            return rate
+                except:
+                    pass
+                
+                # Check next sibling elements for price
+                try:
+                    next_elements = element.find_elements(By.XPATH, "./following-sibling::*[position()<=3]")
+                    for next_elem in next_elements:
+                        if '₹' in next_elem.text:
+                            match = re.search(r'₹\s*([\d,]+)', next_elem.text)
+                            if match:
+                                rate = float(match.group(1).replace(',', ''))
+                                print(f"✅ Found rate in sibling element: ₹{rate}")
+                                return rate
                 except:
                     pass
             
-            # Method 2: Search page source
-            page_source = self.driver.page_source
-            patterns = [
-                r'24K Gold.*?/g.*?₹\s*([\d,]+)',
-                r'24\s*karat.*?₹\s*([\d,]+)',
-                r'24\s*[kK].*?₹\s*([\d,]+)'
-            ]
-            
-            for pattern in patterns:
-                match = re.search(pattern, page_source, re.IGNORECASE | re.DOTALL)
-                if match:
-                    return float(match.group(1).replace(',', ''))
+            # Look for table structures specifically
+            tables = self.driver.find_elements(By.TAG_NAME, "table")
+            for table in tables:
+                rows = table.find_elements(By.TAG_NAME, "tr")
+                for row in rows:
+                    row_text = row.text
+                    if '24K' in row_text or '24 K' in row_text:
+                        print(f"🔍 Found 24K in table row: {row_text}")
+                        # Extract price from this row
+                        match = re.search(r'₹\s*([\d,]+)', row_text)
+                        if match:
+                            rate = float(match.group(1).replace(',', ''))
+                            print(f"✅ Found rate in table: ₹{rate}")
+                            return rate
             
         except Exception as e:
-            print(f"Extraction error: {e}")
+            print(f"❌ Element extraction error: {e}")
         
         return None
+    
+    def debug_available_rates(self, page_source):
+        """Debug function to see what rates are available"""
+        try:
+            print("\n🔍 DEBUG: Available gold rates on page:")
+            
+            # Find all rates with karat info
+            patterns = [
+                r'(\d+K?\s*(?:Gold|Karat|Carat)?.*?₹\s*[\d,]+)',
+                r'(₹\s*[\d,]+.*?\d+K?)',
+                r'(\d+\s*(?:Karat|Carat).*?₹\s*[\d,]+)'
+            ]
+            
+            found_rates = set()
+            for pattern in patterns:
+                matches = re.findall(pattern, page_source, re.IGNORECASE)
+                for match in matches:
+                    clean_match = re.sub(r'\s+', ' ', match.strip())
+                    if len(clean_match) < 100:  # Avoid long text
+                        found_rates.add(clean_match)
+            
+            for rate in sorted(found_rates):
+                print(f"  📊 {rate}")
+            
+            # Specifically look for 24 and 22 patterns
+            k24_matches = re.findall(r'24K?.*?₹\s*([\d,]+)', page_source, re.IGNORECASE)
+            k22_matches = re.findall(r'22K?.*?₹\s*([\d,]+)', page_source, re.IGNORECASE)
+            
+            if k24_matches:
+                print(f"\n✅ Found 24K rates: {k24_matches}")
+            if k22_matches:
+                print(f"⚠️  Found 22K rates: {k22_matches}")
+            
+        except Exception as e:
+            print(f"❌ Debug error: {e}")
     
     def check_and_notify(self, current_data):
         """Check for changes and send notifications"""
@@ -150,7 +254,7 @@ class GoldScraperWithNotifications:
         direction = "📈 INCREASED" if change > 0 else "📉 DECREASED"
         emoji = "🚨" if abs(change_percent) >= 2 else "⚠️"
         
-        message = f"""{emoji} Kerala Gold Rate Alert!
+        message = f"""{emoji} Kerala 24K Gold Rate Alert!
 
 {direction} by ₹{abs(change):.0f} ({abs(change_percent):.1f}%)
 
@@ -164,9 +268,9 @@ Time: {datetime.now().strftime('%d %b %Y, %I:%M %p')}
     
     def send_initial_notification(self, current_rate):
         """Send initial notification"""
-        message = f"""🎉 Gold Rate Tracker Started!
+        message = f"""🎉 Kerala 24K Gold Rate Tracker Started!
 
-Kerala 24K Gold Rate: ₹{current_rate:.0f}/g
+Current Rate: ₹{current_rate:.0f}/g
 Monitoring started: {datetime.now().strftime('%d %b %Y, %I:%M %p')}
 
 You'll receive alerts for changes ≥₹50 or ≥1%
@@ -233,7 +337,7 @@ Please check the system.
                 'token': self.pushover_token,
                 'user': self.pushover_user,
                 'message': message,
-                'title': 'Kerala Gold Rate',
+                'title': 'Kerala 24K Gold Rate',
                 'priority': priority_map.get(priority, 0)
             }
             
@@ -252,7 +356,7 @@ Please check the system.
             url = f"https://ntfy.sh/{self.ntfy_topic}"
             
             headers = {
-                'Title': 'Kerala Gold Rate',
+                'Title': 'Kerala 24K Gold Rate',
                 'Priority': 'high' if priority == 'high' else 'default',
                 'Tags': 'gold,money,alert' if priority == 'high' else 'gold,money'
             }
@@ -293,6 +397,6 @@ if __name__ == "__main__":
     result = scraper.scrape_rate()
     
     if result:
-        print(f"✅ Final Result: ₹{result['rate']} per gram")
+        print(f"✅ Final Result: ₹{result['rate']} per gram (24K)")
     else:
-        print("❌ Scraping failed")
+        print("❌ Failed to scrape 24K gold rate")
