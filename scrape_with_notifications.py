@@ -332,7 +332,8 @@ if __name__ == "__main__":
     else:
         print("❌ Tracking failed")
     
-print("\n🔧 To customize alerts, edit the configuration variables at the top of this file!")            self.send_error_notification(f"Error ({self.current_period}): {str(e)}")
+        print("\n🔧 To customize alerts, edit the configuration variables at the top of this file!")
+        self.send_error_notification(f"Error ({self.current_period}): {str(e)}")
             return None
         finally:
             self.driver.quit()
