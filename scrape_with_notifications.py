@@ -227,113 +227,7 @@ class ConfigurableKeralaGoldTracker:
                 return None
                 
         except Exception as e:
-            print(f"❌ Pushover error: {e}")
-    
-    def send_ntfy(self, message, priority):
-        """Send ntfy.sh notification"""
-        try:
-            url = f"https://ntfy.sh/{self.ntfy_topic}"
-            
-            priority_map = {"low": "min", "normal": "default", "high": "high"}
-            
-            if ENABLE_EMOJI_IN_MESSAGES:
-                tags = "gold,kerala,fire,money" if priority == "high" else "gold,kerala,chart_with_upwards_trend"
-            else:
-                tags = "gold,kerala"
-            
-            headers = {
-                'Title': NOTIFICATION_TITLE,
-                'Priority': priority_map.get(priority, "default"),
-                'Tags': tags
-            }
-            
-            response = requests.post(url, data=message, headers=headers, timeout=10)
-            if response.status_code == 200:
-                print("✅ ntfy sent")
-            else:
-                print(f"❌ ntfy failed: {response.status_code}")
-                
-        except Exception as e:
-            print(f"❌ ntfy error: {e}")
-    
-    def save_data(self, data):
-        """Save data with configured retention settings"""
-        os.makedirs('data', exist_ok=True)
-        
-        # Save latest
-        with open('data/latest_rate.json', 'w') as f:
-            json.dump(data, f, indent=2)
-        
-        # Save to history with configured retention
-        history_file = 'data/rate_history.json'
-        history = []
-        
-        if os.path.exists(history_file):
-            with open('data/rate_history.json', 'r') as f:
-                history = json.load(f)
-        
-        history.append(data)
-        history = history[-HISTORY_ENTRIES_TO_KEEP:]
-        
-        with open('data/rate_history.json', 'w') as f:
-            json.dump(history, f, indent=2)
-        
-        # Save configuration summary for reference
-        config_summary = {
-            'last_updated': data['timestamp'],
-            'thresholds': {
-                'akgsma_rupees': AKGSMA_THRESHOLD_RUPEES,
-                'akgsma_percent': AKGSMA_THRESHOLD_PERCENT,
-                'evening_rupees': EVENING_THRESHOLD_RUPEES,
-                'evening_percent': EVENING_THRESHOLD_PERCENT,
-                'trading_rupees': TRADING_THRESHOLD_RUPEES,
-                'trading_percent': TRADING_THRESHOLD_PERCENT,
-                'offhours_rupees': OFFHOURS_THRESHOLD_RUPEES,
-                'offhours_percent': OFFHOURS_THRESHOLD_PERCENT,
-                'micro_alerts': MICRO_ALERT_RUPEES if ENABLE_MICRO_ALERTS else 'disabled',
-                'rapid_alerts': RAPID_MOVEMENT_THRESHOLD if ENABLE_RAPID_ALERTS else 'disabled'
-            },
-            'features': {
-                'micro_alerts': ENABLE_MICRO_ALERTS,
-                'rapid_alerts': ENABLE_RAPID_ALERTS,
-                'trend_alerts': ENABLE_TREND_ALERTS,
-                'stability_alerts': ENABLE_STABILITY_ALERTS,
-                'hourly_reports': ENABLE_HOURLY_REPORTS,
-                'weekend_reduced_sensitivity': ENABLE_WEEKEND_REDUCED_SENSITIVITY
-            },
-            'current_period': data['market_period'],
-            'is_weekend': data['is_weekend']
-        }
-        
-        with open('data/config_summary.json', 'w') as f:
-            json.dump(config_summary, f, indent=2)
-
-if __name__ == "__main__":
-    print("🔧 Starting Configurable Kerala Gold Tracker...")
-    print("=" * 60)
-    print("📊 CURRENT CONFIGURATION:")
-    print(f"• AKGSMA Threshold: ≥₹{AKGSMA_THRESHOLD_RUPEES} ({AKGSMA_THRESHOLD_PERCENT}%)")
-    print(f"• Evening Threshold: ≥₹{EVENING_THRESHOLD_RUPEES} ({EVENING_THRESHOLD_PERCENT}%)")
-    print(f"• Trading Threshold: ≥₹{TRADING_THRESHOLD_RUPEES} ({TRADING_THRESHOLD_PERCENT}%)")
-    print(f"• Off Hours Threshold: ≥₹{OFFHOURS_THRESHOLD_RUPEES} ({OFFHOURS_THRESHOLD_PERCENT}%)")
-    print(f"• Micro Alerts: {'✅ Enabled' if ENABLE_MICRO_ALERTS else '❌ Disabled'} (≥₹{MICRO_ALERT_RUPEES})")
-    print(f"• Rapid Alerts: {'✅ Enabled' if ENABLE_RAPID_ALERTS else '❌ Disabled'} (≥₹{RAPID_MOVEMENT_THRESHOLD} in {RAPID_MOVEMENT_WINDOW_MINUTES}min)")
-    print(f"• Trend Alerts: {'✅ Enabled' if ENABLE_TREND_ALERTS else '❌ Disabled'} (≥₹{TREND_REVERSAL_THRESHOLD})")
-    print(f"• Stability Alerts: {'✅ Enabled' if ENABLE_STABILITY_ALERTS else '❌ Disabled'} ({STABILITY_ALERT_MINUTES}min)")
-    print(f"• Hourly Reports: {'✅ Enabled' if ENABLE_HOURLY_REPORTS else '❌ Disabled'}")
-    print("=" * 60)
-    
-    tracker = ConfigurableKeralaGoldTracker()
-    result = tracker.scrape_rate()
-    
-    if result:
-        print(f"✅ Success: ₹{result['rate']} - {result['market_period']}")
-        print(f"📊 Weekend Mode: {result['is_weekend']}")
-    else:
-        print("❌ Tracking failed")
-    
-        print("\n🔧 To customize alerts, edit the configuration variables at the top of this file!")
-        self.send_error_notification(f"Error ({self.current_period}): {str(e)}")
+            self.send_error_notification(f"Error ({self.current_period}): {str(e)}")
             return None
         finally:
             self.driver.quit()
@@ -538,7 +432,7 @@ if __name__ == "__main__":
         
         if abs(change) == 0:
             message = f"""{emoji} {NOTIFICATION_TITLE}
-            
+
 {direction} NO CHANGE for {minutes_since:.0f} minutes
 Current: ₹{current_rate:.0f}/g
 Type: {notification_type}
@@ -662,7 +556,7 @@ Weekend Mode: {self.is_weekend}
 • Stability Alerts: {'Enabled' if ENABLE_STABILITY_ALERTS else 'Disabled'} ({STABILITY_ALERT_MINUTES}min)
 • Hourly Reports: {'Enabled' if ENABLE_HOURLY_REPORTS else 'Disabled'}
 
-🔧 Easy to customize by editing the configuration variables at the top of the script!"""
+🔧 Easy to customize by editing configuration variables at top of script!"""
         
         self.send_notifications(message, priority="normal")
     
@@ -735,4 +629,110 @@ Will retry on next scheduled run."""
             else:
                 print(f"❌ Pushover failed: {response.status_code}")
                 
-        except Exception as e
+        except Exception as e:
+            print(f"❌ Pushover error: {e}")
+    
+    def send_ntfy(self, message, priority):
+        """Send ntfy.sh notification"""
+        try:
+            url = f"https://ntfy.sh/{self.ntfy_topic}"
+            
+            priority_map = {"low": "min", "normal": "default", "high": "high"}
+            
+            if ENABLE_EMOJI_IN_MESSAGES:
+                tags = "gold,kerala,fire,money" if priority == "high" else "gold,kerala,chart_with_upwards_trend"
+            else:
+                tags = "gold,kerala"
+            
+            headers = {
+                'Title': NOTIFICATION_TITLE,
+                'Priority': priority_map.get(priority, "default"),
+                'Tags': tags
+            }
+            
+            response = requests.post(url, data=message, headers=headers, timeout=10)
+            if response.status_code == 200:
+                print("✅ ntfy sent")
+            else:
+                print(f"❌ ntfy failed: {response.status_code}")
+                
+        except Exception as e:
+            print(f"❌ ntfy error: {e}")
+    
+    def save_data(self, data):
+        """Save data with configured retention settings"""
+        os.makedirs('data', exist_ok=True)
+        
+        # Save latest
+        with open('data/latest_rate.json', 'w') as f:
+            json.dump(data, f, indent=2)
+        
+        # Save to history with configured retention
+        history_file = 'data/rate_history.json'
+        history = []
+        
+        if os.path.exists(history_file):
+            with open('data/rate_history.json', 'r') as f:
+                history = json.load(f)
+        
+        history.append(data)
+        history = history[-HISTORY_ENTRIES_TO_KEEP:]
+        
+        with open('data/rate_history.json', 'w') as f:
+            json.dump(history, f, indent=2)
+        
+        # Save configuration summary for reference
+        config_summary = {
+            'last_updated': data['timestamp'],
+            'thresholds': {
+                'akgsma_rupees': AKGSMA_THRESHOLD_RUPEES,
+                'akgsma_percent': AKGSMA_THRESHOLD_PERCENT,
+                'evening_rupees': EVENING_THRESHOLD_RUPEES,
+                'evening_percent': EVENING_THRESHOLD_PERCENT,
+                'trading_rupees': TRADING_THRESHOLD_RUPEES,
+                'trading_percent': TRADING_THRESHOLD_PERCENT,
+                'offhours_rupees': OFFHOURS_THRESHOLD_RUPEES,
+                'offhours_percent': OFFHOURS_THRESHOLD_PERCENT,
+                'micro_alerts': MICRO_ALERT_RUPEES if ENABLE_MICRO_ALERTS else 'disabled',
+                'rapid_alerts': RAPID_MOVEMENT_THRESHOLD if ENABLE_RAPID_ALERTS else 'disabled'
+            },
+            'features': {
+                'micro_alerts': ENABLE_MICRO_ALERTS,
+                'rapid_alerts': ENABLE_RAPID_ALERTS,
+                'trend_alerts': ENABLE_TREND_ALERTS,
+                'stability_alerts': ENABLE_STABILITY_ALERTS,
+                'hourly_reports': ENABLE_HOURLY_REPORTS,
+                'weekend_reduced_sensitivity': ENABLE_WEEKEND_REDUCED_SENSITIVITY
+            },
+            'current_period': data['market_period'],
+            'is_weekend': data['is_weekend']
+        }
+        
+        with open('data/config_summary.json', 'w') as f:
+            json.dump(config_summary, f, indent=2)
+
+if __name__ == "__main__":
+    print("🔧 Starting Configurable Kerala Gold Tracker...")
+    print("=" * 60)
+    print("📊 CURRENT CONFIGURATION:")
+    print(f"• AKGSMA Threshold: ≥₹{AKGSMA_THRESHOLD_RUPEES} ({AKGSMA_THRESHOLD_PERCENT}%)")
+    print(f"• Evening Threshold: ≥₹{EVENING_THRESHOLD_RUPEES} ({EVENING_THRESHOLD_PERCENT}%)")
+    print(f"• Trading Threshold: ≥₹{TRADING_THRESHOLD_RUPEES} ({TRADING_THRESHOLD_PERCENT}%)")
+    print(f"• Off Hours Threshold: ≥₹{OFFHOURS_THRESHOLD_RUPEES} ({OFFHOURS_THRESHOLD_PERCENT}%)")
+    print(f"• Micro Alerts: {'✅ Enabled' if ENABLE_MICRO_ALERTS else '❌ Disabled'} (≥₹{MICRO_ALERT_RUPEES})")
+    print(f"• Rapid Alerts: {'✅ Enabled' if ENABLE_RAPID_ALERTS else '❌ Disabled'} (≥₹{RAPID_MOVEMENT_THRESHOLD} in {RAPID_MOVEMENT_WINDOW_MINUTES}min)")
+    print(f"• Trend Alerts: {'✅ Enabled' if ENABLE_TREND_ALERTS else '❌ Disabled'} (≥₹{TREND_REVERSAL_THRESHOLD})")
+    print(f"• Stability Alerts: {'✅ Enabled' if ENABLE_STABILITY_ALERTS else '❌ Disabled'} ({STABILITY_ALERT_MINUTES}min)")
+    print(f"• Hourly Reports: {'✅ Enabled' if ENABLE_HOURLY_REPORTS else '❌ Disabled'}")
+    print("=" * 60)
+    
+    tracker = ConfigurableKeralaGoldTracker()
+    result = tracker.scrape_rate()
+    
+    if result:
+        print(f"✅ Success: ₹{result['rate']} - {result['market_period']}")
+        print(f"📊 Weekend Mode: {result['is_weekend']}")
+    else:
+        print("❌ Tracking failed")
+    
+    print("\n🔧 To customize alerts, edit the configuration variables at the top of this file!")
