@@ -64,7 +64,7 @@ def generate_api_and_site():
     current_rate = latest.get('rate', 'N/A')
     last_updated = latest.get('timestamp', '')[:19].replace('T', ' ') if latest.get('timestamp') else 'Unknown'
     
-    html_content = f'''<!DOCTYPE html>
+    html_content = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -415,4 +415,64 @@ curl https://your-site.com/api/latest.json
         
         // Load recent history
         fetch('./api/history.json')
-            .
+            .then(r => r.json())
+            .then(data => {{
+                const tbody = document.getElementById('history-tbody');
+                if (data && data.length > 0) {{
+                    const recent = data.slice(-5).reverse(); // Last 5 entries
+                    tbody.innerHTML = recent.map(entry => `
+                        <tr>
+                            <td>${{new Date(entry.timestamp).toLocaleString()}}</td>
+                            <td>₹${{entry.rate}}</td>
+                        </tr>
+                    `).join('');
+                }} else {{
+                    tbody.innerHTML = '<tr><td colspan="2">No history data yet</td></tr>';
+                }}
+            }})
+            .catch(() => {{
+                document.getElementById('history-tbody').innerHTML = '<tr><td colspan="2">History will appear after first run</td></tr>';
+            }});
+        
+        // Copy endpoint URL to clipboard
+        function copyEndpoint(endpoint) {{
+            const fullUrl = window.location.origin + window.location.pathname + endpoint;
+            navigator.clipboard.writeText(fullUrl).then(() => {{
+                // Find the button that was clicked
+                event.target.textContent = 'Copied!';
+                setTimeout(() => event.target.textContent = 'Copy URL', 2000);
+            }}).catch(() => {{
+                // Fallback for older browsers
+                prompt('Copy this URL:', fullUrl);
+            }});
+        }}
+        
+        // Auto-refresh every 10 minutes
+        setTimeout(() => location.reload(), 600000);
+        
+        // Add some interactivity
+        document.addEventListener('DOMContentLoaded', function() {{
+            console.log('Kerala Gold Rate Tracker loaded successfully!');
+            
+            // Add click effect to rate card
+            const rateCard = document.querySelector('.rate-card');
+            if (rateCard) {{
+                rateCard.addEventListener('click', function() {{
+                    this.style.transform = 'scale(1.02)';
+                    setTimeout(() => this.style.transform = 'scale(1)', 200);
+                }});
+            }}
+        }});
+    </script>
+</body>
+</html>"""
+    
+    with open('docs/index.html', 'w', encoding='utf-8') as f:
+        f.write(html_content)
+    
+    print("✅ API endpoints and website generated successfully!")
+    print(f"📊 Latest rate: ₹{current_rate}")
+    print(f"📈 History entries: {len(history)}")
+
+if __name__ == "__main__":
+    generate_api_and_site()
