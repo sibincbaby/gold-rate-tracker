@@ -1,28 +1,38 @@
-name: Gold Rate Scraper with Notifications
+name: Kerala Gold Rate Tracker - Optimized for AKGSMA Schedule
 
 on:
   schedule:
-    # Run every 2 hours
-    - cron: '0 */2 * * *'
+    # MORNING RUSH: Every 15 minutes during AKGSMA rate setting (9-11 AM IST)
+    # 9 AM IST = 3:30 AM UTC, 11 AM IST = 5:30 AM UTC
+    - cron: '30,45 3 * * *'      # 9:00, 9:15 AM IST
+    - cron: '0,15,30,45 4 * * *'  # 9:30, 9:45, 10:00, 10:15 AM IST
+    - cron: '0,15,30 5 * * *'     # 10:30, 10:45, 11:00 AM IST
+    
+    # MARKET HOURS: Every 30 minutes during active trading (11 AM - 6 PM IST)
+    # 11 AM IST = 5:30 AM UTC, 6 PM IST = 12:30 PM UTC
+    - cron: '30 5-12 * * *'       # Every hour at :30 (11:30 AM - 6:00 PM IST)
+    - cron: '0 6-12 * * *'        # Every hour at :00 (11:30 AM - 6:00 PM IST)
+    
+    # EVENING RUSH: Every 15 minutes during evening updates (6-7 PM IST)
+    # 6 PM IST = 12:30 PM UTC, 7 PM IST = 1:30 PM UTC
+    - cron: '30,45 12 * * *'      # 6:00, 6:15 PM IST
+    - cron: '0,15,30 13 * * *'    # 6:30, 6:45, 7:00 PM IST
+    
+    # OFF HOURS: Every 3 hours during low activity (7 PM - 9 AM IST)
+    - cron: '30 15,18,21,0 * * *' # 9:00 PM, 12:00 AM, 3:00 AM, 6:00 AM IST
+    
+    # WEEKEND: Reduced frequency (every 4 hours)
+    - cron: '0 2,6,10,14,18,22 * * 0,6'  # Every 4 hours on Sat/Sun
+  
   workflow_dispatch: # Manual trigger
 
-# Add permissions for GitHub Pages
 permissions:
   contents: write
-  pages: write
-  id-token: write
-
-# Allow one concurrent deployment
-concurrency:
-  group: "pages"
-  cancel-in-progress: false
 
 jobs:
-  scrape-and-deploy:
+  scrape-and-notify:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+    timeout-minutes: 10
     
     steps:
     - name: Checkout repository
@@ -34,6 +44,7 @@ jobs:
       uses: actions/setup-python@v4
       with:
         python-version: '3.11'
+        cache: 'pip'
         
     - name: Install dependencies
       run: |
@@ -46,8 +57,9 @@ jobs:
     - name: Setup ChromeDriver
       uses: nanasess/setup-chromedriver@master
       
-    - name: Run scraper and check for changes
-      run: python scrape_with_notifications.py
+    - name: Run Kerala-optimized scraper
+      timeout-minutes: 6
+      run: python kerala_optimized_scraper.py
       env:
         TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
@@ -57,25 +69,20 @@ jobs:
         
     - name: Generate API and website
       run: python generate_api_site.py
-    
-    - name: Setup Pages
-      uses: actions/configure-pages@v4
-      
-    - name: Upload artifact
-      uses: actions/upload-pages-artifact@v3
-      with:
-        path: './docs'
         
     - name: Deploy to GitHub Pages
-      id: deployment
-      uses: actions/deploy-pages@v4
+      uses: peaceiris/actions-gh-pages@v4
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./docs
+        force_orphan: true
         
-    - name: Commit results to repository
+    - name: Commit results
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
         git add -A
         if ! git diff --staged --quiet; then
-          git commit -m "Auto-update: $(date '+%Y-%m-%d %H:%M')"
+          git commit -m "Kerala update: $(date '+%Y-%m-%d %H:%M UTC') - $(TZ='Asia/Kolkata' date '+%I:%M %p IST')"
           git push
         fi
