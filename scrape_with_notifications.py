@@ -1,7 +1,6 @@
 """
-🥇 CONFIGURABLE KERALA GOLD RATE TRACKER - PRODUCTION READY VERSION
+🥇 CONFIGURABLE KERALA GOLD RATE TRACKER
 Configure all thresholds and settings at the top of this file
-Features proper IST timezone handling and enhanced functionality
 """
 
 # ================================================================================================
@@ -46,6 +45,10 @@ HOURLY_REPORT_PERIODS = ["AKGSMA_MORNING_RUSH", "ACTIVE_TRADING", "EVENING_UPDAT
 HIGH_PRIORITY_RUPEES = 25        # ₹25+ = High priority notification
 HIGH_PRIORITY_PERCENT = 0.5      # 0.5%+ = High priority notification
 
+# ⏰ TIME ZONE SETTINGS
+IST_OFFSET_HOURS = 5             # IST = UTC + 5:30
+IST_OFFSET_MINUTES = 30
+
 # 🕐 MARKET PERIOD DEFINITIONS (IST hours)
 AKGSMA_START_HOUR = 9            # AKGSMA period starts at 9 AM IST
 AKGSMA_END_HOUR = 11             # AKGSMA period ends at 11 AM IST
@@ -76,119 +79,69 @@ WEEKEND_THRESHOLD_RUPEES = 30
 WEEKEND_THRESHOLD_PERCENT = 0.3
 ENABLE_WEEKEND_REDUCED_SENSITIVITY = True
 
-# 🏖️ INDIAN HOLIDAYS (Gold markets closed)
-INDIAN_HOLIDAYS_2025 = [
-    "2025-01-26",  # Republic Day
-    "2025-03-14",  # Holi
-    "2025-04-14",  # Ram Navami
-    "2025-04-18",  # Good Friday
-    "2025-05-01",  # Labour Day
-    "2025-08-15",  # Independence Day
-    "2025-08-16",  # Janmashtami
-    "2025-09-07",  # Ganesh Chaturthi
-    "2025-10-02",  # Gandhi Jayanti
-    "2025-10-20",  # Dussehra
-    "2025-11-01",  # Diwali
-    "2025-11-05",  # Bhai Dooj
-    "2025-12-25",  # Christmas
-]
-
-# 🔧 SELENIUM SETTINGS
-USE_WEBDRIVER_MANAGER = True     # Auto-download Chrome driver
-CHROME_HEADLESS = True           # Run Chrome in headless mode
-CHROME_NO_SANDBOX = True         # Required for some environments
-
 # ================================================================================================
 # 🚀 TRACKER CODE STARTS HERE
 # ================================================================================================
 
-# Standard library imports
 import json
 import os
-import re
-import time
-import random
-from datetime import datetime, timedelta
-
-# Third-party imports
-import pytz
 import requests
+from datetime import datetime, timedelta
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException, WebDriverException
+import time
+import re
 
-# Optional: Auto Chrome driver management
-try:
-    from webdriver_manager.chrome import ChromeDriverManager
-    WEBDRIVER_MANAGER_AVAILABLE = True
-except ImportError:
-    WEBDRIVER_MANAGER_AVAILABLE = False
-    print("⚠️  webdriver-manager not installed. Using system Chrome driver.")
-
-def validate_configuration():
-    """Validate configuration values"""
-    errors = []
-    
-    # Validate thresholds
-    if AKGSMA_THRESHOLD_RUPEES <= 0:
-        errors.append("AKGSMA_THRESHOLD_RUPEES must be positive")
-    if not (0 <= AKGSMA_THRESHOLD_PERCENT <= 100):
-        errors.append("AKGSMA_THRESHOLD_PERCENT must be between 0 and 100")
-    
-    # Validate hours
-    if not (0 <= AKGSMA_START_HOUR <= 23):
-        errors.append("AKGSMA_START_HOUR must be between 0 and 23")
-    if AKGSMA_START_HOUR >= AKGSMA_END_HOUR:
-        errors.append("AKGSMA_START_HOUR must be less than AKGSMA_END_HOUR")
-    
-    # Validate delays
-    if SCRAPING_DELAY_MIN >= SCRAPING_DELAY_MAX:
-        errors.append("SCRAPING_DELAY_MIN must be less than SCRAPING_DELAY_MAX")
-    
-    if errors:
-        print("❌ Configuration Errors:")
-        for error in errors:
-            print(f"   - {error}")
-        return False
-    
-    return True
-
-class ImprovedTimeHandling:
-    """Handles proper IST timezone management with validation"""
-    
+class ConfigurableKeralaGoldTracker:
     def __init__(self):
-        try:
-            self.ist_tz = pytz.timezone('Asia/Kolkata')
-            self.utc_tz = pytz.UTC
-            # Test timezone functionality
-            test_time = self.get_current_ist()
-            if test_time is None:
-                raise ValueError("Timezone initialization failed")
-        except Exception as e:
-            print(f"❌ Timezone initialization error: {e}")
-            raise
+        self.url = "https://www.goodreturns.in/gold-rates/kerala.html"
+        self.setup_driver()
         
-    def get_current_ist(self):
-        """Get current time in IST using proper timezone handling"""
-        try:
-            utc_now = datetime.now(self.utc_tz)
-            ist_now = utc_now.astimezone(self.ist_tz)
-            return ist_now
-        except Exception as e:
-            print(f"❌ Error getting IST time: {e}")
-            return None
+        # Notification settings from environment
+        self.telegram_token = os.environ.get('TELEGRAM_BOT_TOKEN')
+        self.telegram_chat_id = os.environ.get('TELEGRAM_CHAT_ID')
+        self.pushover_token = os.environ.get('PUSHOVER_TOKEN')
+        self.pushover_user = os.environ.get('PUSHOVER_USER')
+        self.ntfy_topic = os.environ.get('NTFY_TOPIC')
+        
+        # Calculate current time and period
+        self.ist_time = datetime.now() + timedelta(hours=IST_OFFSET_HOURS, minutes=IST_OFFSET_MINUTES)
+        self.current_period = self.get_current_period()
+        self.is_weekend = self.ist_time.weekday() >= 5
+        
+        print(f"🔧 Configured Tracker Initialized")
+        print(f"⏰ IST Time: {self.ist_time.strftime('%d %b %Y, %I:%M %p')}")
+        print(f"📊 Period: {self.current_period}")
+        print(f"📅 Weekend Mode: {self.is_weekend}")
+    
+    def setup_driver(self):
+        """Setup Chrome driver with configured delays"""
+        chrome_options = Options()
+        chrome_options.add_argument("--headless")
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--disable-dev-shm-usage")
+        chrome_options.add_argument("--disable-gpu")
+        chrome_options.add_argument("--disable-extensions")
+        chrome_options.add_argument("--window-size=1920,1080")
+        chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+        chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
+        chrome_options.add_experimental_option('useAutomationExtension', False)
+        
+        import random
+        user_agents = [
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        ]
+        chrome_options.add_argument(f"--user-agent={random.choice(user_agents)}")
+        
+        self.driver = webdriver.Chrome(options=chrome_options)
+        self.driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
     
     def get_current_period(self):
-        """Determine current market period using IST"""
-        ist_time = self.get_current_ist()
-        if ist_time is None:
-            return "UNKNOWN"
-            
-        hour = ist_time.hour
+        """Determine current market period using configured hours"""
+        hour = self.ist_time.hour
         
         if AKGSMA_START_HOUR <= hour < AKGSMA_END_HOUR:
             return "AKGSMA_MORNING_RUSH"
@@ -199,372 +152,134 @@ class ImprovedTimeHandling:
         else:
             return "OFF_HOURS"
     
-    def is_market_day(self):
-        """Check if today is a trading day (Monday-Friday, excluding holidays)"""
-        ist_time = self.get_current_ist()
-        if ist_time is None:
-            return False
-        
-        # Check if it's a weekend (Saturday=5, Sunday=6)
-        if ist_time.weekday() >= 5:
-            return False
-        
-        # Check if it's a holiday
-        date_str = ist_time.strftime('%Y-%m-%d')
-        if date_str in INDIAN_HOLIDAYS_2025:
-            return False
-        
-        return True
-    
-    def get_next_market_open(self):
-        """Get next market opening time in IST"""
-        ist_time = self.get_current_ist()
-        if ist_time is None:
-            return None
-        
-        # If it's before 9 AM today and it's a market day
-        if ist_time.hour < AKGSMA_START_HOUR and self.is_market_day():
-            next_open = ist_time.replace(hour=AKGSMA_START_HOUR, minute=0, second=0, microsecond=0)
-        else:
-            # Find next business day at 9 AM
-            days_ahead = 1
-            next_day = ist_time + timedelta(days=days_ahead)
-            
-            while not self._is_market_day_for_date(next_day):
-                days_ahead += 1
-                next_day = ist_time + timedelta(days=days_ahead)
-                # Prevent infinite loop
-                if days_ahead > 10:
-                    break
-            
-            next_open = next_day.replace(hour=AKGSMA_START_HOUR, minute=0, second=0, microsecond=0)
-        
-        return next_open
-    
-    def _is_market_day_for_date(self, date_obj):
-        """Check if a specific date is a market day"""
-        if date_obj.weekday() >= 5:
-            return False
-        
-        date_str = date_obj.strftime('%Y-%m-%d')
-        if date_str in INDIAN_HOLIDAYS_2025:
-            return False
-        
-        return True
-    
-    def format_ist_time(self, dt=None):
-        """Format IST time for display"""
-        if dt is None:
-            dt = self.get_current_ist()
-        if dt is None:
-            return "Unknown Time"
-        return dt.strftime('%d %b %Y, %I:%M:%S %p IST')
-    
-    def get_market_status(self):
-        """Get comprehensive market status"""
-        ist_time = self.get_current_ist()
-        if ist_time is None:
-            return {
-                'error': 'Unable to get IST time',
-                'current_ist': None,
-                'formatted_time': 'Unknown',
-                'period': 'UNKNOWN',
-                'is_trading_day': False,
-                'is_market_hours': False,
-                'next_market_open': None,
-                'is_holiday': False
-            }
-        
-        period = self.get_current_period()
-        is_trading_day = self.is_market_day()
-        
-        status = {
-            'current_ist': ist_time,
-            'formatted_time': self.format_ist_time(ist_time),
-            'period': period,
-            'is_trading_day': is_trading_day,
-            'is_market_hours': period in ['AKGSMA_MORNING_RUSH', 'ACTIVE_TRADING', 'EVENING_UPDATE'] and is_trading_day,
-            'next_market_open': self.get_next_market_open(),
-            'is_holiday': ist_time.strftime('%Y-%m-%d') in INDIAN_HOLIDAYS_2025
-        }
-        
-        return status
-
-class ConfigurableKeralaGoldTracker:
-    def __init__(self):
-        self.url = "https://www.goodreturns.in/gold-rates/kerala.html"
-        self.driver = None
-        
-        # Use improved time handling
-        try:
-            self.time_handler = ImprovedTimeHandling()
-            self.market_status = self.time_handler.get_market_status()
-        except Exception as e:
-            print(f"❌ Time handler initialization failed: {e}")
-            raise
-        
-        # Notification settings from environment
-        self.telegram_token = os.environ.get('TELEGRAM_BOT_TOKEN')
-        self.telegram_chat_id = os.environ.get('TELEGRAM_CHAT_ID')
-        self.pushover_token = os.environ.get('PUSHOVER_TOKEN')
-        self.pushover_user = os.environ.get('PUSHOVER_USER')
-        self.ntfy_topic = os.environ.get('NTFY_TOPIC')
-        
-        print(f"🔧 Configured Tracker Initialized")
-        print(f"⏰ IST Time: {self.market_status['formatted_time']}")
-        print(f"📊 Period: {self.market_status['period']}")
-        print(f"📅 Trading Day: {self.market_status['is_trading_day']}")
-        print(f"🏪 Market Hours: {self.market_status['is_market_hours']}")
-        print(f"🏖️ Holiday: {self.market_status['is_holiday']}")
-    
-    def setup_driver(self):
-        """Setup Chrome driver with improved error handling"""
-        chrome_options = Options()
-        
-        if CHROME_HEADLESS:
-            chrome_options.add_argument("--headless")
-        if CHROME_NO_SANDBOX:
-            chrome_options.add_argument("--no-sandbox")
-            
-        chrome_options.add_argument("--disable-dev-shm-usage")
-        chrome_options.add_argument("--disable-gpu")
-        chrome_options.add_argument("--disable-extensions")
-        chrome_options.add_argument("--window-size=1920,1080")
-        chrome_options.add_argument("--disable-blink-features=AutomationControlled")
-        chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
-        chrome_options.add_experimental_option('useAutomationExtension', False)
-        
-        # Random user agent
-        user_agents = [
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-        ]
-        chrome_options.add_argument(f"--user-agent={random.choice(user_agents)}")
-        
-        try:
-            # Try webdriver-manager first if available
-            if USE_WEBDRIVER_MANAGER and WEBDRIVER_MANAGER_AVAILABLE:
-                service = Service(ChromeDriverManager().install())
-                self.driver = webdriver.Chrome(service=service, options=chrome_options)
-                print("✅ Using webdriver-manager for Chrome driver")
-            else:
-                # Fallback to system Chrome driver
-                self.driver = webdriver.Chrome(options=chrome_options)
-                print("✅ Using system Chrome driver")
-            
-            # Anti-detection measures
-            self.driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
-            
-        except WebDriverException as e:
-            print(f"❌ Chrome driver setup failed: {e}")
-            print("💡 Make sure Chrome browser is installed and ChromeDriver is in PATH")
-            raise
-        except Exception as e:
-            print(f"❌ Unexpected driver setup error: {e}")
-            raise
-    
-    def create_backup(self):
-        """Create backup of important data files"""
-        try:
-            os.makedirs('data/backups', exist_ok=True)
-            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            
-            files_to_backup = [
-                'data/latest_rate.json',
-                'data/rate_history.json',
-                'data/config_summary.json'
-            ]
-            
-            for file_path in files_to_backup:
-                if os.path.exists(file_path):
-                    filename = os.path.basename(file_path)
-                    backup_path = f'data/backups/{timestamp}_{filename}'
-                    
-                    with open(file_path, 'r') as src, open(backup_path, 'w') as dst:
-                        dst.write(src.read())
-            
-            print(f"✅ Backup created: {timestamp}")
-            
-        except Exception as e:
-            print(f"⚠️  Backup creation failed: {e}")
-    
     def get_thresholds_for_period(self, period):
         """Get notification thresholds based on current period and configuration"""
         
-        # Apply weekend/holiday adjustments if enabled
-        adjustment_multiplier = 1.0
-        if (not self.market_status['is_trading_day'] or self.market_status['is_holiday']) and ENABLE_WEEKEND_REDUCED_SENSITIVITY:
-            adjustment_multiplier = WEEKEND_THRESHOLD_RUPEES / TRADING_THRESHOLD_RUPEES
+        # Apply weekend adjustments if enabled
+        weekend_multiplier = 1.0
+        if self.is_weekend and ENABLE_WEEKEND_REDUCED_SENSITIVITY:
+            weekend_multiplier = WEEKEND_THRESHOLD_RUPEES / TRADING_THRESHOLD_RUPEES
         
         if period == "AKGSMA_MORNING_RUSH":
             return {
-                'rupees': AKGSMA_THRESHOLD_RUPEES * adjustment_multiplier,
-                'percent': AKGSMA_THRESHOLD_PERCENT * adjustment_multiplier,
+                'rupees': AKGSMA_THRESHOLD_RUPEES * weekend_multiplier,
+                'percent': AKGSMA_THRESHOLD_PERCENT * weekend_multiplier,
                 'micro_rupees': MICRO_ALERT_RUPEES if ENABLE_MICRO_ALERTS else 999
             }
         elif period == "EVENING_UPDATE":
             return {
-                'rupees': EVENING_THRESHOLD_RUPEES * adjustment_multiplier,
-                'percent': EVENING_THRESHOLD_PERCENT * adjustment_multiplier,
+                'rupees': EVENING_THRESHOLD_RUPEES * weekend_multiplier,
+                'percent': EVENING_THRESHOLD_PERCENT * weekend_multiplier,
                 'micro_rupees': MICRO_ALERT_RUPEES if ENABLE_MICRO_ALERTS else 999
             }
         elif period == "ACTIVE_TRADING":
             return {
-                'rupees': TRADING_THRESHOLD_RUPEES * adjustment_multiplier,
-                'percent': TRADING_THRESHOLD_PERCENT * adjustment_multiplier,
+                'rupees': TRADING_THRESHOLD_RUPEES * weekend_multiplier,
+                'percent': TRADING_THRESHOLD_PERCENT * weekend_multiplier,
                 'micro_rupees': 999
             }
         else:  # OFF_HOURS
             return {
-                'rupees': OFFHOURS_THRESHOLD_RUPEES * adjustment_multiplier,
-                'percent': OFFHOURS_THRESHOLD_PERCENT * adjustment_multiplier,
+                'rupees': OFFHOURS_THRESHOLD_RUPEES * weekend_multiplier,
+                'percent': OFFHOURS_THRESHOLD_PERCENT * weekend_multiplier,
                 'micro_rupees': 999
             }
     
     def scrape_rate(self):
-        """Main scraping function with improved error handling"""
+        """Main scraping function with configured delays"""
         try:
-            print(f"🔍 Kerala Gold Tracker - Period: {self.market_status['period']}")
-            print(f"⚙️ Using thresholds: {self.get_thresholds_for_period(self.market_status['period'])}")
-            
-            # Setup driver
-            self.setup_driver()
+            print(f"🔍 Kerala Gold Tracker - Period: {self.current_period}")
+            print(f"⚙️ Using thresholds: {self.get_thresholds_for_period(self.current_period)}")
             
             # Use configured delays
+            import random
             time.sleep(random.uniform(SCRAPING_DELAY_MIN, SCRAPING_DELAY_MAX))
             
-            # Load page with timeout
-            try:
-                self.driver.get(self.url)
-                WebDriverWait(self.driver, 10).until(
-                    lambda driver: driver.execute_script("return document.readyState") == "complete"
-                )
-                time.sleep(random.uniform(PAGE_LOAD_DELAY_MIN, PAGE_LOAD_DELAY_MAX))
-            except TimeoutException:
-                print("⚠️  Page load timeout - continuing anyway")
+            self.driver.get(self.url)
+            time.sleep(random.uniform(PAGE_LOAD_DELAY_MIN, PAGE_LOAD_DELAY_MAX))
             
             rate = self.extract_24k_rate()
             
-            if rate and rate > 0:
+            if rate:
                 current_data = {
                     'rate': rate,
                     'currency': 'INR',
                     'unit': 'per gram',
                     'purity': '24K',
                     'location': 'Kerala',
-                    'timestamp': datetime.now(pytz.UTC).isoformat(),
-                    'ist_time': self.market_status['current_ist'].isoformat() if self.market_status['current_ist'] else None,
-                    'ist_formatted': self.market_status['formatted_time'],
+                    'timestamp': datetime.now().isoformat(),
+                    'ist_time': self.ist_time.isoformat(),
                     'source': self.url,
                     'success': True,
-                    'market_period': self.market_status['period'],
-                    'is_trading_day': self.market_status['is_trading_day'],
-                    'is_market_hours': self.market_status['is_market_hours'],
-                    'is_holiday': self.market_status['is_holiday']
+                    'market_period': self.current_period,
+                    'is_weekend': self.is_weekend
                 }
-                
-                # Create backup before processing
-                self.create_backup()
                 
                 # Apply configured notification logic
                 self.check_and_notify_configured(current_data)
                 
                 self.save_data(current_data)
                 
-                print(f"✅ Rate: ₹{rate} - {self.market_status['period']}")
+                print(f"✅ Rate: ₹{rate} - {self.current_period}")
                 return current_data
             else:
-                error_msg = "No valid rate found" if rate is None else f"Invalid rate: {rate}"
-                self.send_error_notification(f"Failed during {self.market_status['period']}: {error_msg}")
+                self.send_error_notification(f"Failed during {self.current_period}")
                 return None
                 
-        except WebDriverException as e:
-            self.send_error_notification(f"WebDriver error ({self.market_status['period']}): {str(e)[:100]}")
-            return None
         except Exception as e:
-            self.send_error_notification(f"Error ({self.market_status['period']}): {str(e)[:100]}")
+            self.send_error_notification(f"Error ({self.current_period}): {str(e)}")
             return None
         finally:
-            if self.driver:
-                try:
-                    self.driver.quit()
-                except:
-                    pass
+            self.driver.quit()
     
     def extract_24k_rate(self):
-        """Extract 24K rate from page with improved pattern matching"""
+        """Extract 24K rate from page"""
         try:
             page_source = self.driver.page_source
             
-            # Enhanced patterns for Kerala 24K gold
+            # Try multiple patterns for Kerala 24K gold
             patterns = [
                 r'24K\s+Gold\s*/g.*?₹\s*([\d,]+)',
                 r'Kerala.*?24K.*?₹\s*([\d,]+)',
                 r'24K.*?₹\s*([\d,]+)',
                 r'24\s*Karat.*?₹\s*([\d,]+)',
-                r'24k.*?₹\s*([\d,]+)',
-                r'₹\s*([\d,]+).*?24K',
-                r'₹\s*([\d,]+).*?24\s*Karat'
+                r'24k.*?₹\s*([\d,]+)'
             ]
             
             for i, pattern in enumerate(patterns, 1):
                 match = re.search(pattern, page_source, re.IGNORECASE | re.DOTALL)
                 if match:
-                    rate_str = match.group(1).replace(',', '')
-                    try:
-                        rate = float(rate_str)
-                        # Validate rate is reasonable (between ₹3000-₹10000)
-                        if 3000 <= rate <= 10000:
-                            print(f"✅ Found via pattern {i}: ₹{rate}")
-                            return rate
-                        else:
-                            print(f"⚠️  Pattern {i} found unreasonable rate: ₹{rate}")
-                    except ValueError:
-                        continue
+                    rate = float(match.group(1).replace(',', ''))
+                    print(f"✅ Found via pattern {i}: ₹{rate}")
+                    return rate
             
             # Element-based extraction as fallback
-            try:
-                elements_24k = self.driver.find_elements(By.XPATH, "//*[contains(translate(text(), 'k', 'K'), '24K')]")
+            elements_24k = self.driver.find_elements(By.XPATH, "//*[contains(translate(text(), 'k', 'K'), '24K')]")
+            
+            for element in elements_24k:
+                text = element.text
+                if '₹' in text:
+                    match = re.search(r'₹\s*([\d,]+)', text)
+                    if match:
+                        rate = float(match.group(1).replace(',', ''))
+                        print(f"✅ Found in element: ₹{rate}")
+                        return rate
                 
-                for element in elements_24k:
-                    text = element.text
-                    if '₹' in text:
-                        match = re.search(r'₹\s*([\d,]+)', text)
+                try:
+                    parent = element.find_element(By.XPATH, "..")
+                    parent_text = parent.text
+                    if '₹' in parent_text and '24K' in parent_text:
+                        match = re.search(r'₹\s*([\d,]+)', parent_text)
                         if match:
-                            rate_str = match.group(1).replace(',', '')
-                            try:
-                                rate = float(rate_str)
-                                if 3000 <= rate <= 10000:
-                                    print(f"✅ Found in element: ₹{rate}")
-                                    return rate
-                            except ValueError:
-                                continue
-                    
-                    # Check parent element
-                    try:
-                        parent = element.find_element(By.XPATH, "..")
-                        parent_text = parent.text
-                        if '₹' in parent_text and '24K' in parent_text:
-                            match = re.search(r'₹\s*([\d,]+)', parent_text)
-                            if match:
-                                rate_str = match.group(1).replace(',', '')
-                                try:
-                                    rate = float(rate_str)
-                                    if 3000 <= rate <= 10000:
-                                        print(f"✅ Found in parent: ₹{rate}")
-                                        return rate
-                                except ValueError:
-                                    continue
-                    except:
-                        pass
-            except Exception as e:
-                print(f"⚠️  Element search error: {e}")
+                            rate = float(match.group(1).replace(',', ''))
+                            print(f"✅ Found in parent: ₹{rate}")
+                            return rate
+                except:
+                    pass
             
         except Exception as e:
             print(f"❌ Extraction error: {e}")
         
-        print("❌ No valid 24K gold rate found")
         return None
     
     def check_and_notify_configured(self, current_data):
@@ -584,12 +299,9 @@ class ConfigurableKeralaGoldTracker:
                 change_percent = (change / previous_rate) * 100 if previous_rate > 0 else 0
                 
                 # Get time since last change
-                try:
-                    previous_time = datetime.fromisoformat(previous_data.get('timestamp', ''))
-                    time_diff = datetime.now(pytz.UTC) - previous_time
-                    minutes_since_last = time_diff.total_seconds() / 60
-                except:
-                    minutes_since_last = 0
+                previous_time = datetime.fromisoformat(previous_data.get('timestamp', ''))
+                time_diff = datetime.now() - previous_time
+                minutes_since_last = time_diff.total_seconds() / 60
                 
                 # Get configured thresholds for current period
                 thresholds = self.get_thresholds_for_period(current_period)
@@ -655,7 +367,7 @@ class ConfigurableKeralaGoldTracker:
                 self.send_initial_notification(current_rate, current_period)
                 
         except Exception as e:
-            print(f"❌ Configured notification error: {e}")
+            print(f"Configured notification error: {e}")
     
     def detect_direction_change(self, current_rate):
         """Detect trend reversals using configured parameters"""
@@ -675,8 +387,8 @@ class ConfigurableKeralaGoldTracker:
                         
                         if trend_1 == trend_2 and trend_2 != trend_3:
                             return f"{trend_2} → {trend_3}"
-        except Exception as e:
-            print(f"⚠️  Trend detection error: {e}")
+        except:
+            pass
         
         return None
     
@@ -685,30 +397,25 @@ class ConfigurableKeralaGoldTracker:
         if not ENABLE_HOURLY_REPORTS:
             return False
             
-        if self.market_status['period'] not in HOURLY_REPORT_PERIODS:
+        if self.current_period not in HOURLY_REPORT_PERIODS:
             return False
         
-        ist_time = self.time_handler.get_current_ist()
-        if ist_time is None:
-            return False
-            
-        if ist_time.minute <= 5:
+        if self.ist_time.minute <= 5:
             try:
                 os.makedirs('data', exist_ok=True)
-                hour_key = ist_time.strftime('%Y-%m-%d-%H')
+                hour_key = self.ist_time.strftime('%Y-%m-%d-%H')
                 
-                if os.path.exists('data/last_hourly.txt'):
-                    with open('data/last_hourly.txt', 'r') as f:
-                        last_hourly = f.read().strip()
-                        if last_hourly == hour_key:
-                            return False
-                
-                with open('data/last_hourly.txt', 'w') as f:
-                    f.write(hour_key)
-                
-                return True
-            except Exception as e:
-                print(f"⚠️  Hourly update check error: {e}")
+                with open('data/last_hourly.txt', 'r') as f:
+                    last_hourly = f.read().strip()
+                    if last_hourly == hour_key:
+                        return False
+            except:
+                pass
+            
+            with open('data/last_hourly.txt', 'w') as f:
+                f.write(hour_key)
+            
+            return True
         
         return False
     
@@ -723,24 +430,16 @@ class ConfigurableKeralaGoldTracker:
             direction = "UP" if change > 0 else "DOWN" if change < 0 else "STABLE"
             emoji = ""
         
-        ist_formatted = self.time_handler.format_ist_time()
-        
         if abs(change) == 0:
             message = f"""{emoji} {NOTIFICATION_TITLE}
 
 {direction} NO CHANGE for {minutes_since:.0f} minutes
 Current: ₹{current_rate:.0f}/g
 Type: {notification_type}
-Time: {ist_formatted}"""
+Time: {self.ist_time.strftime('%I:%M %p IST')}"""
             
             if INCLUDE_PERIOD_CONTEXT:
-                market_context = ""
-                if not self.market_status['is_trading_day']:
-                    market_context = " (Non-trading day)"
-                elif self.market_status['is_holiday']:
-                    market_context = " (Holiday)"
-                
-                message += f"\n\n💡 Stability during {period.lower().replace('_', ' ')}{market_context} noted."
+                message += f"\n\n💡 Stability during {period.lower().replace('_', ' ')} noted."
         else:
             if abs(change) >= 50:
                 magnitude = "MAJOR"
@@ -761,16 +460,10 @@ Change: ₹{change:+.0f}
 
 Type: {notification_type}
 Gap: {minutes_since:.0f} min
-Time: {ist_formatted}"""
+Time: {self.ist_time.strftime('%I:%M %p IST')}"""
             
             if INCLUDE_PERIOD_CONTEXT:
-                market_context = ""
-                if not self.market_status['is_trading_day']:
-                    market_context = " (Non-trading day)"
-                elif self.market_status['is_holiday']:
-                    market_context = " (Holiday)"
-                
-                message += f"\n\n🎯 Period: {period.lower().replace('_', ' ')}{market_context}"
+                message += f"\n\n🎯 Period: {period.lower().replace('_', ' ')}"
         
         self.send_notifications(message, priority)
     
@@ -798,11 +491,10 @@ Time: {ist_formatted}"""
                     trend = "➡️ STABLE" if ENABLE_EMOJI_IN_MESSAGES else "STABLE"
                 
                 emoji = "📊 " if ENABLE_EMOJI_IN_MESSAGES else ""
-                ist_formatted = self.time_handler.format_ist_time()
                 
                 message = f"""{emoji}Hourly Gold Trend Report
 
-{trend} Hour: {self.time_handler.get_current_ist().strftime('%I:00 %p IST') if self.time_handler.get_current_ist() else 'Unknown'}
+{trend} Hour: {self.ist_time.strftime('%I:00 %p IST')}
 
 Hourly Performance:
 • Opening: ₹{opening_rate:.0f}/g
@@ -813,12 +505,11 @@ Hourly Performance:
 • Volatility: ₹{hourly_volatility:.0f}
 
 Activity: {len(hourly_data)} updates this hour
-Period: {self.market_status['period'].replace('_', ' ').title()}
-Market Day: {self.market_status['is_trading_day']}"""
+Period: {self.current_period.replace('_', ' ').title()}"""
                 
                 self.send_notifications(message, priority="low")
         except Exception as e:
-            print(f"❌ Hourly update error: {e}")
+            print(f"Hourly update error: {e}")
     
     def get_last_hour_data(self):
         """Get data from last hour"""
@@ -827,35 +518,30 @@ Market Day: {self.market_status['is_trading_day']}"""
                 with open('data/rate_history.json', 'r') as f:
                     history = json.load(f)
                 
-                one_hour_ago = datetime.now(pytz.UTC) - timedelta(hours=1)
+                one_hour_ago = datetime.now() - timedelta(hours=1)
                 recent_data = []
                 
                 for entry in reversed(history):
-                    try:
-                        entry_time = datetime.fromisoformat(entry['timestamp'])
-                        if entry_time >= one_hour_ago:
-                            recent_data.append(entry)
-                    except:
-                        continue
+                    entry_time = datetime.fromisoformat(entry['timestamp'])
+                    if entry_time >= one_hour_ago:
+                        recent_data.append(entry)
                 
                 return list(reversed(recent_data))
-        except Exception as e:
-            print(f"⚠️  Last hour data error: {e}")
+        except:
+            pass
         
         return []
     
     def send_initial_notification(self, current_rate, period):
         """Send initial setup notification with current configuration"""
         emoji = "🚀 " if ENABLE_EMOJI_IN_MESSAGES else ""
-        ist_formatted = self.time_handler.format_ist_time()
         
         message = f"""{emoji}{NOTIFICATION_TITLE} Started!
 
 Current Rate: ₹{current_rate:.0f}/g
 Period: {period.replace('_', ' ').title()}
-Time: {ist_formatted}
-Trading Day: {self.market_status['is_trading_day']}
-Holiday: {self.market_status['is_holiday']}
+Time: {self.ist_time.strftime('%d %b, %I:%M %p IST')}
+Weekend Mode: {self.is_weekend}
 
 🔧 CONFIGURED THRESHOLDS:
 • AKGSMA (9-11 AM): ≥₹{AKGSMA_THRESHOLD_RUPEES} ({AKGSMA_THRESHOLD_PERCENT}%)
@@ -870,9 +556,6 @@ Holiday: {self.market_status['is_holiday']}
 • Stability Alerts: {'Enabled' if ENABLE_STABILITY_ALERTS else 'Disabled'} ({STABILITY_ALERT_MINUTES}min)
 • Hourly Reports: {'Enabled' if ENABLE_HOURLY_REPORTS else 'Disabled'}
 
-🏖️ HOLIDAY TRACKING:
-Monitors {len(INDIAN_HOLIDAYS_2025)} Indian holidays for market closures
-
 🔧 Easy to customize by editing configuration variables at top of script!"""
         
         self.send_notifications(message, priority="normal")
@@ -880,16 +563,14 @@ Monitors {len(INDIAN_HOLIDAYS_2025)} Indian holidays for market closures
     def send_error_notification(self, error_msg):
         """Send error notification"""
         emoji = "❌ " if ENABLE_EMOJI_IN_MESSAGES else ""
-        ist_formatted = self.time_handler.format_ist_time()
         
         message = f"""{emoji}{NOTIFICATION_TITLE} Error
 
 {error_msg}
 
-Period: {self.market_status['period']}
-Time: {ist_formatted}
-Trading Day: {self.market_status['is_trading_day']}
-Holiday: {self.market_status['is_holiday']}
+Period: {self.current_period}
+Time: {self.ist_time.strftime('%I:%M %p IST')}
+Weekend: {self.is_weekend}
 
 Will retry on next scheduled run."""
         
@@ -898,22 +579,14 @@ Will retry on next scheduled run."""
     def send_notifications(self, message, priority="normal"):
         """Send notifications via configured channels"""
         
-        notifications_sent = 0
-        
         if self.telegram_token and self.telegram_chat_id:
-            if self.send_telegram(message):
-                notifications_sent += 1
+            self.send_telegram(message)
         
         if self.pushover_token and self.pushover_user:
-            if self.send_pushover(message, priority):
-                notifications_sent += 1
+            self.send_pushover(message, priority)
         
         if self.ntfy_topic:
-            if self.send_ntfy(message, priority):
-                notifications_sent += 1
-        
-        if notifications_sent == 0:
-            print(f"⚠️  No notifications sent - check environment variables")
+            self.send_ntfy(message, priority)
         
         print(f"📱 Alert ({priority}): {message[:80]}...")
     
@@ -930,17 +603,11 @@ Will retry on next scheduled run."""
             response = requests.post(url, data=data, timeout=10)
             if response.status_code == 200:
                 print("✅ Telegram sent")
-                return True
             else:
                 print(f"❌ Telegram failed: {response.status_code}")
-                return False
                 
-        except requests.RequestException as e:
-            print(f"❌ Telegram network error: {e}")
-            return False
         except Exception as e:
             print(f"❌ Telegram error: {e}")
-            return False
     
     def send_pushover(self, message, priority):
         """Send Pushover notification"""
@@ -959,17 +626,11 @@ Will retry on next scheduled run."""
             response = requests.post(url, data=data, timeout=10)
             if response.status_code == 200:
                 print("✅ Pushover sent")
-                return True
             else:
                 print(f"❌ Pushover failed: {response.status_code}")
-                return False
                 
-        except requests.RequestException as e:
-            print(f"❌ Pushover network error: {e}")
-            return False
         except Exception as e:
             print(f"❌ Pushover error: {e}")
-            return False
     
     def send_ntfy(self, message, priority):
         """Send ntfy.sh notification"""
@@ -992,229 +653,67 @@ Will retry on next scheduled run."""
             response = requests.post(url, data=message, headers=headers, timeout=10)
             if response.status_code == 200:
                 print("✅ ntfy sent")
-                return True
             else:
                 print(f"❌ ntfy failed: {response.status_code}")
-                return False
                 
-        except requests.RequestException as e:
-            print(f"❌ ntfy network error: {e}")
-            return False
         except Exception as e:
             print(f"❌ ntfy error: {e}")
-            return False
     
     def save_data(self, data):
-        """Save data with configured retention settings and improved error handling"""
-        try:
-            os.makedirs('data', exist_ok=True)
-            
-            # Save latest with atomic write
-            temp_file = 'data/latest_rate.json.tmp'
-            with open(temp_file, 'w') as f:
-                json.dump(data, f, indent=2)
-            os.replace(temp_file, 'data/latest_rate.json')
-            
-            # Save to history with configured retention
-            history_file = 'data/rate_history.json'
-            history = []
-            
-            if os.path.exists(history_file):
-                try:
-                    with open(history_file, 'r') as f:
-                        history = json.load(f)
-                except json.JSONDecodeError:
-                    print("⚠️  Corrupted history file - starting fresh")
-                    history = []
-            
-            history.append(data)
-            history = history[-HISTORY_ENTRIES_TO_KEEP:]
-            
-            # Atomic write for history
-            temp_history = 'data/rate_history.json.tmp'
-            with open(temp_history, 'w') as f:
-                json.dump(history, f, indent=2)
-            os.replace(temp_history, history_file)
-            
-            # Save configuration summary for reference
-            config_summary = {
-                'last_updated': data['timestamp'],
-                'ist_time': data['ist_formatted'],
-                'version': '2.0.0',
-                'thresholds': {
-                    'akgsma_rupees': AKGSMA_THRESHOLD_RUPEES,
-                    'akgsma_percent': AKGSMA_THRESHOLD_PERCENT,
-                    'evening_rupees': EVENING_THRESHOLD_RUPEES,
-                    'evening_percent': EVENING_THRESHOLD_PERCENT,
-                    'trading_rupees': TRADING_THRESHOLD_RUPEES,
-                    'trading_percent': TRADING_THRESHOLD_PERCENT,
-                    'offhours_rupees': OFFHOURS_THRESHOLD_RUPEES,
-                    'offhours_percent': OFFHOURS_THRESHOLD_PERCENT,
-                    'micro_alerts': MICRO_ALERT_RUPEES if ENABLE_MICRO_ALERTS else 'disabled',
-                    'rapid_alerts': RAPID_MOVEMENT_THRESHOLD if ENABLE_RAPID_ALERTS else 'disabled'
-                },
-                'features': {
-                    'micro_alerts': ENABLE_MICRO_ALERTS,
-                    'rapid_alerts': ENABLE_RAPID_ALERTS,
-                    'trend_alerts': ENABLE_TREND_ALERTS,
-                    'stability_alerts': ENABLE_STABILITY_ALERTS,
-                    'hourly_reports': ENABLE_HOURLY_REPORTS,
-                    'weekend_reduced_sensitivity': ENABLE_WEEKEND_REDUCED_SENSITIVITY
-                },
-                'market_info': {
-                    'current_period': data['market_period'],
-                    'is_trading_day': data['is_trading_day'],
-                    'is_market_hours': data['is_market_hours'],
-                    'is_holiday': data['is_holiday']
-                },
-                'timezone_info': {
-                    'utc_timestamp': data['timestamp'],
-                    'ist_timestamp': data['ist_time'],
-                    'ist_formatted': data['ist_formatted']
-                }
-            }
-            
-            # Atomic write for config summary
-            temp_config = 'data/config_summary.json.tmp'
-            with open(temp_config, 'w') as f:
-                json.dump(config_summary, f, indent=2)
-            os.replace(temp_config, 'data/config_summary.json')
-            
-            print("✅ Data saved successfully")
-            
-        except Exception as e:
-            print(f"❌ Data save error: {e}")
-    
-    def get_daily_summary(self):
-        """Generate daily summary of gold rate movements"""
-        try:
-            if os.path.exists('data/rate_history.json'):
-                with open('data/rate_history.json', 'r') as f:
-                    history = json.load(f)
-                
-                # Get today's data (IST)
-                ist_today = self.time_handler.get_current_ist()
-                if ist_today is None:
-                    return None
-                    
-                ist_today_date = ist_today.date()
-                today_data = []
-                
-                for entry in history:
-                    try:
-                        entry_ist = datetime.fromisoformat(entry['ist_time']).date()
-                        if entry_ist == ist_today_date:
-                            today_data.append(entry)
-                    except:
-                        continue
-                
-                if today_data:
-                    rates = [entry['rate'] for entry in today_data]
-                    opening = rates[0]
-                    closing = rates[-1]
-                    high = max(rates)
-                    low = min(rates)
-                    change = closing - opening
-                    change_percent = (change / opening) * 100 if opening > 0 else 0
-                    volatility = high - low
-                    
-                    return {
-                        'date': ist_today_date.strftime('%d %b %Y'),
-                        'opening': opening,
-                        'closing': closing,
-                        'high': high,
-                        'low': low,
-                        'change': change,
-                        'change_percent': change_percent,
-                        'volatility': volatility,
-                        'updates': len(today_data)
-                    }
-        except Exception as e:
-            print(f"⚠️  Daily summary error: {e}")
+        """Save data with configured retention settings"""
+        os.makedirs('data', exist_ok=True)
         
-        return None
-    
-    def send_daily_summary(self):
-        """Send end-of-day summary if enabled"""
-        summary = self.get_daily_summary()
-        if summary:
-            emoji = "📊 " if ENABLE_EMOJI_IN_MESSAGES else ""
-            direction = "📈" if summary['change'] > 0 else "📉" if summary['change'] < 0 else "➡️"
-            
-            message = f"""{emoji}Daily Gold Summary - {summary['date']}
+        # Save latest
+        with open('data/latest_rate.json', 'w') as f:
+            json.dump(data, f, indent=2)
+        
+        # Save to history with configured retention
+        history_file = 'data/rate_history.json'
+        history = []
+        
+        if os.path.exists(history_file):
+            with open('data/rate_history.json', 'r') as f:
+                history = json.load(f)
+        
+        history.append(data)
+        history = history[-HISTORY_ENTRIES_TO_KEEP:]
+        
+        with open('data/rate_history.json', 'w') as f:
+            json.dump(history, f, indent=2)
+        
+        # Save configuration summary for reference
+        config_summary = {
+            'last_updated': data['timestamp'],
+            'thresholds': {
+                'akgsma_rupees': AKGSMA_THRESHOLD_RUPEES,
+                'akgsma_percent': AKGSMA_THRESHOLD_PERCENT,
+                'evening_rupees': EVENING_THRESHOLD_RUPEES,
+                'evening_percent': EVENING_THRESHOLD_PERCENT,
+                'trading_rupees': TRADING_THRESHOLD_RUPEES,
+                'trading_percent': TRADING_THRESHOLD_PERCENT,
+                'offhours_rupees': OFFHOURS_THRESHOLD_RUPEES,
+                'offhours_percent': OFFHOURS_THRESHOLD_PERCENT,
+                'micro_alerts': MICRO_ALERT_RUPEES if ENABLE_MICRO_ALERTS else 'disabled',
+                'rapid_alerts': RAPID_MOVEMENT_THRESHOLD if ENABLE_RAPID_ALERTS else 'disabled'
+            },
+            'features': {
+                'micro_alerts': ENABLE_MICRO_ALERTS,
+                'rapid_alerts': ENABLE_RAPID_ALERTS,
+                'trend_alerts': ENABLE_TREND_ALERTS,
+                'stability_alerts': ENABLE_STABILITY_ALERTS,
+                'hourly_reports': ENABLE_HOURLY_REPORTS,
+                'weekend_reduced_sensitivity': ENABLE_WEEKEND_REDUCED_SENSITIVITY
+            },
+            'current_period': data['market_period'],
+            'is_weekend': data['is_weekend']
+        }
+        
+        with open('data/config_summary.json', 'w') as f:
+            json.dump(config_summary, f, indent=2)
 
-{direction} Daily Performance:
-• Opening: ₹{summary['opening']:.0f}/g
-• Closing: ₹{summary['closing']:.0f}/g
-• High: ₹{summary['high']:.0f}/g  
-• Low: ₹{summary['low']:.0f}/g
-• Change: ₹{summary['change']:+.0f} ({summary['change_percent']:+.2f}%)
-• Volatility: ₹{summary['volatility']:.0f}
-
-📈 Trading Activity: {summary['updates']} rate updates
-🕒 Generated: {self.time_handler.format_ist_time()}"""
-            
-            self.send_notifications(message, priority="low")
-
-def setup_environment_variables():
-    """Setup guide for environment variables"""
-    print("\n🔧 ENVIRONMENT VARIABLES SETUP:")
-    print("=" * 50)
-    print("Set these environment variables for notifications:")
-    print()
-    print("For Telegram:")
-    print("export TELEGRAM_BOT_TOKEN='your_bot_token'")
-    print("export TELEGRAM_CHAT_ID='your_chat_id'")
-    print()
-    print("For Pushover:")
-    print("export PUSHOVER_TOKEN='your_app_token'")
-    print("export PUSHOVER_USER='your_user_key'")
-    print()
-    print("For ntfy.sh:")
-    print("export NTFY_TOPIC='your_unique_topic'")
-    print("=" * 50)
-
-def check_dependencies():
-    """Check if required dependencies are installed"""
-    missing_deps = []
-    
-    try:
-        import selenium
-    except ImportError:
-        missing_deps.append("selenium")
-    
-    try:
-        import pytz
-    except ImportError:
-        missing_deps.append("pytz")
-    
-    try:
-        import requests
-    except ImportError:
-        missing_deps.append("requests")
-    
-    if missing_deps:
-        print("❌ Missing dependencies:")
-        for dep in missing_deps:
-            print(f"   - {dep}")
-        print("\n💡 Install with: pip install " + " ".join(missing_deps))
-        return False
-    
-    return True
-
-def main():
-    """Main execution function"""
-    print("🔧 Starting Enhanced Kerala Gold Tracker with Proper IST Handling...")
-    print("=" * 80)
-    
-    # Check dependencies
-    if not check_dependencies():
-        return
-    
-    # Validate configuration
-    if not validate_configuration():
-        return
-    
+if __name__ == "__main__":
+    print("🔧 Starting Configurable Kerala Gold Tracker...")
+    print("=" * 60)
     print("📊 CURRENT CONFIGURATION:")
     print(f"• AKGSMA Threshold: ≥₹{AKGSMA_THRESHOLD_RUPEES} ({AKGSMA_THRESHOLD_PERCENT}%)")
     print(f"• Evening Threshold: ≥₹{EVENING_THRESHOLD_RUPEES} ({EVENING_THRESHOLD_PERCENT}%)")
@@ -1225,49 +724,15 @@ def main():
     print(f"• Trend Alerts: {'✅ Enabled' if ENABLE_TREND_ALERTS else '❌ Disabled'} (≥₹{TREND_REVERSAL_THRESHOLD})")
     print(f"• Stability Alerts: {'✅ Enabled' if ENABLE_STABILITY_ALERTS else '❌ Disabled'} ({STABILITY_ALERT_MINUTES}min)")
     print(f"• Hourly Reports: {'✅ Enabled' if ENABLE_HOURLY_REPORTS else '❌ Disabled'}")
-    print(f"• Holiday Tracking: {len(INDIAN_HOLIDAYS_2025)} holidays configured")
-    print(f"• WebDriver Manager: {'✅ Enabled' if USE_WEBDRIVER_MANAGER and WEBDRIVER_MANAGER_AVAILABLE else '❌ Disabled'}")
-    print("=" * 80)
+    print("=" * 60)
     
-    # Check if environment variables are set
-    required_vars = ['TELEGRAM_BOT_TOKEN', 'PUSHOVER_TOKEN', 'NTFY_TOPIC']
-    missing_vars = [var for var in required_vars if not os.environ.get(var)]
+    tracker = ConfigurableKeralaGoldTracker()
+    result = tracker.scrape_rate()
     
-    if missing_vars:
-        print("⚠️  Missing notification setup!")
-        setup_environment_variables()
-        print("\n💡 You can still run the tracker - it will just print results without sending notifications.")
-        print("=" * 80)
-    
-    try:
-        tracker = ConfigurableKeralaGoldTracker()
-        result = tracker.scrape_rate()
-        
-        if result:
-            print(f"✅ Success: ₹{result['rate']} - {result['market_period']}")
-            print(f"📊 Trading Day: {result['is_trading_day']}")
-            print(f"🏖️ Holiday: {result['is_holiday']}")
-            print(f"🕒 IST Time: {result['ist_formatted']}")
-            
-            # Check if it's end of trading day for summary
-            ist_time = tracker.time_handler.get_current_ist()
-            if ist_time and ist_time.hour == 19 and ist_time.minute <= 5:  # 7 PM IST
-                tracker.send_daily_summary()
-                
-        else:
-            print("❌ Tracking failed")
-            
-    except KeyboardInterrupt:
-        print("\n🛑 Tracker stopped by user")
-    except Exception as e:
-        print(f"❌ Unexpected error: {e}")
-        import traceback
-        traceback.print_exc()
+    if result:
+        print(f"✅ Success: ₹{result['rate']} - {result['market_period']}")
+        print(f"📊 Weekend Mode: {result['is_weekend']}")
+    else:
+        print("❌ Tracking failed")
     
     print("\n🔧 To customize alerts, edit the configuration variables at the top of this file!")
-    print("🌍 This version uses proper IST timezone handling with pytz library")
-    print("🏖️ Includes Indian holiday tracking and market day detection")
-    print("🛡️ Enhanced error handling and data backup mechanisms")
-
-if __name__ == "__main__":
-    main()
