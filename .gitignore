@@ -67,3 +67,6 @@ docs/
 # Temporary files
 *.tmp
 *.temp
+
+.claude
+.claudedocs
