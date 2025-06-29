@@ -9,18 +9,58 @@ IST = ZoneInfo("Asia/Kolkata")
 def generate_enhanced_api_and_site():
     """Generate API endpoints with enhanced timing information"""
     
-    # Load data
+    # Ensure data directory exists
+    os.makedirs('data', exist_ok=True)
+    
+    # Load data with staleness validation
     try:
         with open('data/latest_rate.json', 'r') as f:
             latest = json.load(f)
+        
+        # Preserve original scraping timestamp while handling staleness
+        if latest.get('timestamp'):
+            try:
+                data_timestamp = datetime.fromisoformat(latest['timestamp'])
+                if data_timestamp.tzinfo is None:
+                    data_timestamp = data_timestamp.replace(tzinfo=IST)
+                
+                current_time = datetime.now(IST)
+                age_hours = (current_time - data_timestamp).total_seconds() / 3600
+                
+                # Store original scraping timestamp separately - NEVER overwrite it
+                latest['original_scrape_timestamp'] = latest['timestamp']
+                latest['original_scrape_timestamp_ist'] = latest.get('ist_time', latest['timestamp'])
+                
+                # For very stale data (>24h), mark data validity but preserve original timestamp
+                if age_hours > 24:
+                    print(f"⚠️  Data is {age_hours:.1f} hours old - marking as stale but preserving original scrape time")
+                    latest['data_validity'] = 'stale'
+                    latest['stale_reason'] = f'Data is {age_hours:.1f} hours old'
+                else:
+                    latest['data_validity'] = 'fresh'
+                    
+            except (ValueError, TypeError) as e:
+                # If timestamp parsing fails, preserve original but mark as invalid
+                print(f"⚠️  Invalid timestamp format, preserving original: {e}")
+                latest['original_scrape_timestamp'] = latest.get('timestamp', 'invalid')
+                latest['original_scrape_timestamp_ist'] = latest.get('ist_time', 'invalid')
+                latest['data_validity'] = 'invalid_timestamp'
+                latest['timestamp'] = datetime.now(IST).isoformat()
+                latest['ist_time'] = datetime.now(IST).isoformat()
     except:
+        # File doesn't exist or is corrupted - create fresh fallback
+        print("📂 No data file found, creating fallback with current timestamp")
         latest = {
             'rate': 'N/A', 
             'timestamp': datetime.now(IST).isoformat(),
+            'ist_time': datetime.now(IST).isoformat(),
             'location': 'Kerala',
             'currency': 'INR',
             'unit': 'per gram',
-            'purity': '24K'
+            'purity': '24K',
+            'success': False,
+            'market_period': 'UNKNOWN',
+            'is_weekend': datetime.now(IST).weekday() >= 5
         }
     
     try:
@@ -37,6 +77,9 @@ def generate_enhanced_api_and_site():
     now = datetime.now(IST)
     if latest.get('timestamp'):
         last_fetched = datetime.fromisoformat(latest['timestamp'])
+        # Ensure timezone consistency for calculations
+        if last_fetched.tzinfo is None:
+            last_fetched = last_fetched.replace(tzinfo=IST)
         fetch_age_seconds = (now - last_fetched).total_seconds()
         fetch_age_minutes = fetch_age_seconds / 60
         fetch_age_hours = fetch_age_minutes / 60
@@ -85,8 +128,14 @@ def generate_enhanced_api_and_site():
         'market_period': latest.get('market_period', 'UNKNOWN'),
         
         # Enhanced timing information
-        'data_fetched_at': latest.get('timestamp'),
-        'data_fetched_at_ist': latest.get('ist_time', latest.get('timestamp')),
+        'data_scraped_at': latest.get('original_scrape_timestamp', latest.get('timestamp')),
+        'data_scraped_at_ist': latest.get('original_scrape_timestamp_ist', latest.get('ist_time', latest.get('timestamp'))),
+        'api_generated_at': now.isoformat(),
+        'api_generated_at_ist': now.isoformat(),
+        
+        # Legacy fields for backward compatibility
+        'data_fetched_at': latest.get('original_scrape_timestamp', latest.get('timestamp')),
+        'data_fetched_at_ist': latest.get('original_scrape_timestamp_ist', latest.get('ist_time', latest.get('timestamp'))),
         'api_response_at': now.isoformat(),
         'api_response_at_ist': now.isoformat(),
         
@@ -115,13 +164,21 @@ def generate_enhanced_api_and_site():
             'total_updates_today': count_todays_updates(history)
         },
         
+        # Data validity information
+        'data_validity': {
+            'status': latest.get('data_validity', 'unknown'),
+            'reason': latest.get('stale_reason', ''),
+            'original_timestamp_preserved': latest.get('original_scrape_timestamp') is not None
+        },
+        
         # API metadata
         'api_info': {
-            'version': '2.0',
+            'version': '2.1',
             'type': 'cached',
             'cache_strategy': 'github_actions_scheduled',
             'real_time': False,
-            'rate_limited': False
+            'rate_limited': False,
+            'preserves_original_scrape_time': True
         }
     }
     
