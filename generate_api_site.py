@@ -1,6 +1,10 @@
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
+
+# Define IST timezone
+IST = ZoneInfo("Asia/Kolkata")
 
 def generate_enhanced_api_and_site():
     """Generate API endpoints with enhanced timing information"""
@@ -12,7 +16,7 @@ def generate_enhanced_api_and_site():
     except:
         latest = {
             'rate': 'N/A', 
-            'timestamp': datetime.now().isoformat(),
+            'timestamp': datetime.now(IST).isoformat(),
             'location': 'Kerala',
             'currency': 'INR',
             'unit': 'per gram',
@@ -30,7 +34,7 @@ def generate_enhanced_api_and_site():
     os.makedirs('docs/api', exist_ok=True)
     
     # Calculate timing information
-    now = datetime.now()
+    now = datetime.now(IST)
     if latest.get('timestamp'):
         last_fetched = datetime.fromisoformat(latest['timestamp'])
         fetch_age_seconds = (now - last_fetched).total_seconds()
@@ -38,8 +42,7 @@ def generate_enhanced_api_and_site():
         fetch_age_hours = fetch_age_minutes / 60
         
         # Determine next expected update (based on current schedule)
-        ist_now = now + timedelta(hours=5, minutes=30)
-        current_hour = ist_now.hour
+        current_hour = now.hour
         
         if 9 <= current_hour < 11:  # AKGSMA period
             next_update_minutes = 15 - (fetch_age_minutes % 15)
@@ -85,7 +88,7 @@ def generate_enhanced_api_and_site():
         'data_fetched_at': latest.get('timestamp'),
         'data_fetched_at_ist': latest.get('ist_time', latest.get('timestamp')),
         'api_response_at': now.isoformat(),
-        'api_response_at_ist': (now + timedelta(hours=5, minutes=30)).isoformat(),
+        'api_response_at_ist': now.isoformat(),
         
         # Data age information
         'data_age': {
@@ -107,7 +110,7 @@ def generate_enhanced_api_and_site():
         # Update schedule information
         'update_info': {
             'next_update_in_minutes': max(0, round(next_update_minutes, 1)),
-            'update_frequency': get_current_update_frequency(ist_now.hour),
+            'update_frequency': get_current_update_frequency(now.hour),
             'last_update_was_scheduled': True,
             'total_updates_today': count_todays_updates(history)
         },
@@ -227,7 +230,7 @@ def get_current_update_frequency(ist_hour):
 def count_todays_updates(history):
     """Count how many updates happened today"""
     try:
-        today = datetime.now().strftime('%Y-%m-%d')
+        today = datetime.now(IST).strftime('%Y-%m-%d')
         return len([entry for entry in history if entry.get('timestamp', '').startswith(today)])
     except:
         return 0
@@ -235,10 +238,13 @@ def count_todays_updates(history):
 def count_last_24h_entries(history):
     """Count entries from last 24 hours"""
     try:
-        cutoff = datetime.now() - timedelta(hours=24)
+        cutoff = datetime.now(IST) - timedelta(hours=24)
         count = 0
         for entry in history:
-            entry_time = datetime.fromisoformat(entry['timestamp'])
+            entry_timestamp = entry['timestamp']
+            entry_time = datetime.fromisoformat(entry_timestamp)
+            if entry_time.tzinfo is None:
+                entry_time = entry_time.replace(tzinfo=IST)
             if entry_time >= cutoff:
                 count += 1
         return count
@@ -253,8 +259,14 @@ def calculate_avg_interval(history):
         
         intervals = []
         for i in range(1, len(history)):
-            time1 = datetime.fromisoformat(history[i-1]['timestamp'])
-            time2 = datetime.fromisoformat(history[i]['timestamp'])
+            timestamp1 = history[i-1]['timestamp']
+            timestamp2 = history[i]['timestamp']
+            time1 = datetime.fromisoformat(timestamp1)
+            time2 = datetime.fromisoformat(timestamp2)
+            if time1.tzinfo is None:
+                time1 = time1.replace(tzinfo=IST)
+            if time2.tzinfo is None:
+                time2 = time2.replace(tzinfo=IST)
             interval_minutes = (time2 - time1).total_seconds() / 60
             intervals.append(interval_minutes)
         
@@ -269,10 +281,13 @@ def calculate_24h_change(history):
             return 0
         
         current_rate = history[-1]['rate']
-        cutoff = datetime.now() - timedelta(hours=24)
+        cutoff = datetime.now(IST) - timedelta(hours=24)
         
         for entry in reversed(history[:-1]):
-            entry_time = datetime.fromisoformat(entry['timestamp'])
+            entry_timestamp = entry['timestamp']
+            entry_time = datetime.fromisoformat(entry_timestamp)
+            if entry_time.tzinfo is None:
+                entry_time = entry_time.replace(tzinfo=IST)
             if entry_time <= cutoff:
                 return round(current_rate - entry['rate'], 2)
         
@@ -287,10 +302,13 @@ def calculate_hour_change(history):
             return 0
         
         current_rate = history[-1]['rate']
-        cutoff = datetime.now() - timedelta(hours=1)
+        cutoff = datetime.now(IST) - timedelta(hours=1)
         
         for entry in reversed(history[:-1]):
-            entry_time = datetime.fromisoformat(entry['timestamp'])
+            entry_timestamp = entry['timestamp']
+            entry_time = datetime.fromisoformat(entry_timestamp)
+            if entry_time.tzinfo is None:
+                entry_time = entry_time.replace(tzinfo=IST)
             if entry_time <= cutoff:
                 return round(current_rate - entry['rate'], 2)
         
@@ -301,7 +319,7 @@ def calculate_hour_change(history):
 def get_daily_high(history):
     """Get today's highest rate"""
     try:
-        today = datetime.now().strftime('%Y-%m-%d')
+        today = datetime.now(IST).strftime('%Y-%m-%d')
         today_rates = [entry['rate'] for entry in history 
                       if entry.get('timestamp', '').startswith(today) 
                       and isinstance(entry.get('rate'), (int, float))]
@@ -312,7 +330,7 @@ def get_daily_high(history):
 def get_daily_low(history):
     """Get today's lowest rate"""
     try:
-        today = datetime.now().strftime('%Y-%m-%d')
+        today = datetime.now(IST).strftime('%Y-%m-%d')
         today_rates = [entry['rate'] for entry in history 
                       if entry.get('timestamp', '').startswith(today) 
                       and isinstance(entry.get('rate'), (int, float))]

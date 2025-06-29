@@ -45,9 +45,8 @@ HOURLY_REPORT_PERIODS = ["AKGSMA_MORNING_RUSH", "ACTIVE_TRADING", "EVENING_UPDAT
 HIGH_PRIORITY_RUPEES = 25        # ₹25+ = High priority notification
 HIGH_PRIORITY_PERCENT = 0.5      # 0.5%+ = High priority notification
 
-# ⏰ TIME ZONE SETTINGS
-IST_OFFSET_HOURS = 5             # IST = UTC + 5:30
-IST_OFFSET_MINUTES = 30
+# ⏰ TIME ZONE SETTINGS  
+# (Note: IST constant defined after imports below)
 
 # 🕐 MARKET PERIOD DEFINITIONS (IST hours)
 AKGSMA_START_HOUR = 9            # AKGSMA period starts at 9 AM IST
@@ -86,12 +85,16 @@ ENABLE_WEEKEND_REDUCED_SENSITIVITY = True
 import json
 import os
 import requests
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 import time
 import re
+
+# Define IST timezone after imports
+IST = ZoneInfo("Asia/Kolkata")
 
 class ConfigurableKeralaGoldTracker:
     def __init__(self):
@@ -106,7 +109,7 @@ class ConfigurableKeralaGoldTracker:
         self.ntfy_topic = os.environ.get('NTFY_TOPIC')
         
         # Calculate current time and period
-        self.ist_time = datetime.now() + timedelta(hours=IST_OFFSET_HOURS, minutes=IST_OFFSET_MINUTES)
+        self.ist_time = datetime.now(IST)
         self.current_period = self.get_current_period()
         self.is_weekend = self.ist_time.weekday() >= 5
         
@@ -207,7 +210,7 @@ class ConfigurableKeralaGoldTracker:
                     'unit': 'per gram',
                     'purity': '24K',
                     'location': 'Kerala',
-                    'timestamp': datetime.now().isoformat(),
+                    'timestamp': self.ist_time.isoformat(),
                     'ist_time': self.ist_time.isoformat(),
                     'source': self.url,
                     'success': True,
@@ -299,8 +302,14 @@ class ConfigurableKeralaGoldTracker:
                 change_percent = (change / previous_rate) * 100 if previous_rate > 0 else 0
                 
                 # Get time since last change
-                previous_time = datetime.fromisoformat(previous_data.get('timestamp', ''))
-                time_diff = datetime.now() - previous_time
+                previous_timestamp = previous_data.get('timestamp', '')
+                if previous_timestamp:
+                    previous_time = datetime.fromisoformat(previous_timestamp)
+                    if previous_time.tzinfo is None:
+                        previous_time = previous_time.replace(tzinfo=IST)
+                    time_diff = self.ist_time - previous_time
+                else:
+                    time_diff = timedelta(0)
                 minutes_since_last = time_diff.total_seconds() / 60
                 
                 # Get configured thresholds for current period
@@ -518,11 +527,14 @@ Period: {self.current_period.replace('_', ' ').title()}"""
                 with open('data/rate_history.json', 'r') as f:
                     history = json.load(f)
                 
-                one_hour_ago = datetime.now() - timedelta(hours=1)
+                one_hour_ago = self.ist_time - timedelta(hours=1)
                 recent_data = []
                 
                 for entry in reversed(history):
-                    entry_time = datetime.fromisoformat(entry['timestamp'])
+                    entry_timestamp = entry['timestamp']
+                    entry_time = datetime.fromisoformat(entry_timestamp)
+                    if entry_time.tzinfo is None:
+                        entry_time = entry_time.replace(tzinfo=IST)
                     if entry_time >= one_hour_ago:
                         recent_data.append(entry)
                 
