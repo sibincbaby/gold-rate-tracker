@@ -12,6 +12,7 @@ def generate_enhanced_api_and_site():
     # Ensure data directory exists
     os.makedirs('data', exist_ok=True)
     
+    
     # Load data with staleness validation
     try:
         with open('data/latest_rate.json', 'r') as f:
