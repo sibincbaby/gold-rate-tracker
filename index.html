@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kerala 24K Gold Rate API with Real Fetch Time</title>
+    <meta name="description" content="Kerala 24K gold rate API with real data fetch timing. Current: ₹9726.0/gram">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🥇</text></svg>">
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: white;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        .rate-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+        }
+        
+        .current-rate {
+            font-size: 4rem;
+            font-weight: bold;
+            color: #ffd700;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            margin-bottom: 10px;
+        }
+        
+        .rate-unit {
+            font-size: 1.5rem;
+            opacity: 0.8;
+            margin-bottom: 20px;
+        }
+        
+        .freshness-indicator {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 15px;
+            padding: 20px;
+            margin: 20px 0;
+            border-left: 5px solid #00ff00;
+        }
+        
+        .freshness-status {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #00ff00;
+        }
+        
+        .timing-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+        
+        .timing-item {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        
+        .timing-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #ffd700;
+        }
+        
+        .timing-label {
+            font-size: 0.9rem;
+            opacity: 0.8;
+            margin-top: 5px;
+        }
+        
+        .api-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 40px 0;
+        }
+        
+        .api-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+        }
+        
+        .endpoint {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            margin: 10px 0;
+            word-break: break-all;
+            position: relative;
+        }
+        
+        .copy-btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+        
+        .copy-btn:hover {
+            background: #2980b9;
+        }
+        
+        @media (max-width: 768px) {
+            .current-rate { font-size: 2.5rem; }
+            .timing-grid { grid-template-columns: 1fr; }
+            .api-section { grid-template-columns: 1fr; }
+            .container { padding: 10px; }
+        }
+        
+        .footer {
+            text-align: center;
+            padding: 20px;
+            opacity: 0.7;
+            margin-top: 40px;
+        }
+        
+        .footer a {
+            color: #ffd700;
+            text-decoration: none;
+        }
+        
+        .auto-refresh {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px 15px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="auto-refresh">
+        🔄 Auto-refresh: <span id="refresh-timer">60</span>s
+    </div>
+    
+    <div class="container">
+        <div class="header">
+            <h1>🥇 Kerala Gold Rate API</h1>
+            <p>Real-time tracking with actual fetch time information</p>
+        </div>
+        
+        <div class="rate-card">
+            <div class="current-rate">₹9726.0</div>
+            <div class="rate-unit">per gram (24K)</div>
+            
+            <div class="freshness-indicator">
+                <div class="freshness-status">
+                    Very Fresh Data
+                </div>
+                <div>Last fetched: 9 seconds ago</div>
+                <div>Confidence: Very High</div>
+            </div>
+            
+            <div class="timing-grid">
+                <div class="timing-item">
+                    <div class="timing-value">0.2</div>
+                    <div class="timing-label">Minutes Since Fetch</div>
+                </div>
+                <div class="timing-item">
+                    <div class="timing-value">14.8</div>
+                    <div class="timing-label">Next Update (min)</div>
+                </div>
+                <div class="timing-item">
+                    <div class="timing-value">1</div>
+                    <div class="timing-label">Updates Today</div>
+                </div>
+                <div class="timing-item">
+                    <div class="timing-value">Very High</div>
+                    <div class="timing-label">Data Confidence</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="api-section">
+            <div class="api-card">
+                <h3>📡 Enhanced API Endpoints</h3>
+                <p>All endpoints now include comprehensive timing information:</p>
+                
+                <h4>Latest Rate with Timing:</h4>
+                <div class="endpoint">
+                    GET ./api/latest.json
+                    <button class="copy-btn" onclick="copyEndpoint('api/latest.json')">Copy URL</button>
+                </div>
+                
+                <h4>Historical Data with Metadata:</h4>
+                <div class="endpoint">
+                    GET ./api/history.json
+                    <button class="copy-btn" onclick="copyEndpoint('api/history.json')">Copy URL</button>
+                </div>
+                
+                <h4>Statistics with Trends:</h4>
+                <div class="endpoint">
+                    GET ./api/stats.json
+                    <button class="copy-btn" onclick="copyEndpoint('api/stats.json')">Copy URL</button>
+                </div>
+            </div>
+            
+            <div class="api-card">
+                <h3>⏰ Timing Information Included</h3>
+                <p>Every API response now includes:</p>
+                
+                <ul style="margin: 15px 0; padding-left: 20px;">
+                    <li><strong>data_fetched_at</strong> - When data was actually scraped</li>
+                    <li><strong>data_age</strong> - How old the data is (seconds/minutes/hours)</li>
+                    <li><strong>freshness</strong> - Data quality assessment</li>
+                    <li><strong>next_update_in_minutes</strong> - When next update expected</li>
+                    <li><strong>update_frequency</strong> - Current update schedule</li>
+                    <li><strong>confidence</strong> - Data reliability score</li>
+                </ul>
+            </div>
+            
+            <div class="api-card">
+                <h3>📊 Current Schedule</h3>
+                <div id="schedule-info">
+                    <p><strong>Current Period:</strong> Every 15 minutes (AKGSMA morning period)</p>
+                    <p><strong>Next Update:</strong> ~14.8 minutes</p>
+                    <p><strong>Updates Today:</strong> 1 times</p>
+                </div>
+            </div>
+            
+            <div class="api-card">
+                <h3>🔧 Sample Enhanced Response</h3>
+                <div class="endpoint">
+{
+  "rate": 9726.0,
+  "data_fetched_at": "2025-06-30T09:57:40.903854+05:30",
+  "data_age": {
+    "minutes": 0.2,
+    "human_readable": "9 seconds ago"
+  },
+  "freshness": {
+    "status": "very_fresh",
+    "confidence": "very_high"
+  },
+  "next_update_in_minutes": 14.8
+}
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>🔥 Enhanced with real fetch timing | Data from GoodReturns.in</p>
+            <p>📈 Now you know exactly when data was last fetched!</p>
+            <p><a href="https://github.com/sibincbaby/gold-rate-tracker">⭐ View Source Code</a></p>
+        </div>
+    </div>
+    
+    <script>
+        // Auto-refresh countdown
+        let refreshTimer = 60;
+        const timerElement = document.getElementById('refresh-timer');
+        
+        setInterval(() => {
+            refreshTimer--;
+            timerElement.textContent = refreshTimer;
+            
+            if (refreshTimer <= 0) {
+                location.reload();
+            }
+        }, 1000);
+        
+        // Copy endpoint URL to clipboard
+        function copyEndpoint(endpoint) {
+            const fullUrl = window.location.origin + window.location.pathname + endpoint;
+            navigator.clipboard.writeText(fullUrl).then(() => {
+                event.target.textContent = 'Copied!';
+                setTimeout(() => event.target.textContent = 'Copy URL', 2000);
+            }).catch(() => {
+                prompt('Copy this URL:', fullUrl);
+            });
+        }
+        
+        // Update timing displays every minute
+        setInterval(() => {
+            fetch('./api/latest.json')
+                .then(r => r.json())
+                .then(data => {
+                    const ageMinutes = data.data_age?.minutes || 0;
+                    const nextUpdate = data.update_info?.next_update_in_minutes || 0;
+                    
+                    // Update displays if elements exist
+                    const timingItems = document.querySelectorAll('.timing-value');
+                    if (timingItems[0]) timingItems[0].textContent = ageMinutes.toFixed(1);
+                    if (timingItems[1]) timingItems[1].textContent = nextUpdate.toFixed(1);
+                })
+                .catch(() => console.log('Failed to update timing'));
+        }, 60000);
+    </script>
+</body>
+</html>
