@@ -1,22 +1,6 @@
 """
 🥇 CONFIGURABLE KERALA GOLD RATE TRACKER
-Configure all thresholds and s# 📅 DAILY COMPARISON FEATURE
-ENABLE_YESTERDAY_COMPARISON = True  # Show change from yesterday's rate in notifications
-YESTERDAY_COMPARISON_WINDOW_HOURS = 22  # Look for rate within 22-26 hours ago (allows for missing data)
-
-# 💰 MULTI-GRAM DISPLAY
-ENABLE_MULTI_GRAM_DISPLAY = True  # Show prices for 2g, 5g, 8g, 10g in notifications
-GRAM_QUANTITIES = [2, 5, 8, 10]  # Gram quantities to display (customize as needed)
-
-# � SELLING RATE CALCULATOR
-ENABLE_SELLING_RATE_DISPLAY = True  # Show actual selling prices after fees
-SELLING_FEE_PERCENTAGES = [2, 3, 5]  # Jewellery fee percentages (2%, 3%, 5%)
-SELLING_GRAM_QUANTITIES = [1, 2, 5, 8, 10]  # Gram quantities for selling calculations
-
-# �🔍 WEEKEND SETTINGS
-WEEKEND_THRESHOLD_RUPEES = 30
-WEEKEND_THRESHOLD_PERCENT = 0.3
-ENABLE_WEEKEND_REDUCED_SENSITIVITY = Trueat the top of this file
+Configure all thresholds and settings at the top of this file
 """
 
 # ================================================================================================
@@ -89,11 +73,20 @@ NOTIFICATION_TITLE = "Kerala 24K Gold Tracker"
 ENABLE_EMOJI_IN_MESSAGES = True
 INCLUDE_PERIOD_CONTEXT = True
 
-# � DAILY COMPARISON FEATURE
+# 📅 DAILY COMPARISON FEATURE
 ENABLE_YESTERDAY_COMPARISON = True  # Show change from yesterday's rate in notifications
 YESTERDAY_COMPARISON_WINDOW_HOURS = 22  # Look for rate within 22-26 hours ago (allows for missing data)
 
-# �🔍 WEEKEND SETTINGS
+# 💰 MULTI-GRAM DISPLAY
+ENABLE_MULTI_GRAM_DISPLAY = True  # Show prices for 2g, 5g, 8g, 10g in notifications
+GRAM_QUANTITIES = [2, 5, 8, 10]  # Gram quantities to display (customize as needed)
+
+# 💸 SELLING RATE CALCULATOR
+ENABLE_SELLING_RATE_DISPLAY = True  # Show actual selling prices after fees
+SELLING_FEE_PERCENTAGES = [2, 3, 5]  # Jewellery fee percentages (2%, 3%, 5%)
+SELLING_GRAM_QUANTITIES = [1, 2, 5, 8, 10]  # Gram quantities for selling calculations
+
+# 🔍 WEEKEND SETTINGS
 WEEKEND_THRESHOLD_RUPEES = 30
 WEEKEND_THRESHOLD_PERCENT = 0.3
 ENABLE_WEEKEND_REDUCED_SENSITIVITY = True
