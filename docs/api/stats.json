@@ -10,14 +10,14 @@
   "trends": {
     "last_24h_change": 0,
     "last_hour_change": 0,
-    "daily_high": null,
-    "daily_low": null
+    "daily_high": 12508.0,
+    "daily_low": 12508.0
   },
   "data_quality": {
     "total_data_points": 1,
     "data_completeness": 100.0,
-    "last_updated": "2025-10-11T23:59:49.374908+05:30",
-    "data_age_minutes": 0.3
+    "last_updated": "2025-10-12T00:12:14.499860+05:30",
+    "data_age_minutes": 0.2
   },
-  "generated_at": "2025-10-12T00:00:05.873318+05:30"
+  "generated_at": "2025-10-12T00:12:24.574843+05:30"
 }
