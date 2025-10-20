@@ -1,13 +1,13 @@
 {
   "data": [
     {
-      "rate": 13069.0,
+      "rate": 11980.0,
       "currency": "INR",
       "unit": "per gram",
       "purity": "24K",
       "location": "Kerala",
-      "timestamp": "2025-10-20T18:34:10.059383+05:30",
-      "ist_time": "2025-10-20T18:34:10.059383+05:30",
+      "timestamp": "2025-10-20T18:36:47.067000+05:30",
+      "ist_time": "2025-10-20T18:36:47.067000+05:30",
       "source": "https://www.goodreturns.in/gold-rates/kerala.html",
       "success": true,
       "market_period": "EVENING_UPDATE",
@@ -17,10 +17,10 @@
   "metadata": {
     "total_entries": 1,
     "date_range": {
-      "oldest": "2025-10-20T18:34:10.059383+05:30",
-      "newest": "2025-10-20T18:34:10.059383+05:30"
+      "oldest": "2025-10-20T18:36:47.067000+05:30",
+      "newest": "2025-10-20T18:36:47.067000+05:30"
     },
-    "api_generated_at": "2025-10-20T18:34:18.574578+05:30",
+    "api_generated_at": "2025-10-20T18:36:55.806228+05:30",
     "data_points_last_24h": 1,
     "average_update_interval_minutes": null
   }
