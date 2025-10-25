@@ -652,23 +652,24 @@ Period: {self.current_period.replace('_', ' ').title()}"""
         """Format selling rates after jewellery fees"""
         if not ENABLE_SELLING_RATE_DISPLAY:
             return ""
-        
+
         lines = []
-        
+
         for grams in SELLING_GRAM_QUANTITIES:
             gross_value = rate_per_gram * grams
-            
+
             # Calculate net amounts for each fee percentage
             net_values = []
             for fee_percent in SELLING_FEE_PERCENTAGES:
                 fee_amount = gross_value * (fee_percent / 100)
                 net_amount = gross_value - fee_amount
                 net_values.append(f"{fee_percent}%:₹{net_amount:,.0f}")
-            
-            # Format line for this gram quantity
+
+            # Format line for this gram quantity - ensure all values fit
             line = f"{grams}g: " + " | ".join(net_values)
             lines.append(line)
-        
+
+        # Join all lines with newline
         return "\n".join(lines)
     
     def get_yesterday_rate(self):
