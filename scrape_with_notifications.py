@@ -129,7 +129,7 @@ class ConfigurableKeralaGoldTracker:
         print(f"🔧 Configured Tracker Initialized")
         print(f"⏰ IST Time: {self.ist_time.strftime('%d %b %Y, %I:%M %p')}")
         print(f"📊 Period: {self.current_period}")
-        print(f"📅 Weekend Mode: {self.is_weekend}")
+        # print(f"📅 Weekend Mode: {self.is_weekend}")
     
     def setup_driver(self):
         """Setup Chrome driver with configured delays"""
@@ -500,23 +500,30 @@ Time: {self.ist_time.strftime('%I:%M %p IST')}"""
             else:
                 magnitude = "MINOR"
             
+            # Determine arrow/emoji for change direction
+            if ENABLE_EMOJI_IN_MESSAGES:
+                change_arrow = "⬆️" if change > 0 else "⬇️" if change < 0 else "➡️"
+            else:
+                change_arrow = "↑" if change > 0 else "↓" if change < 0 else "→"
+
             message = f"""{emoji} {NOTIFICATION_TITLE}
 
-{direction} {magnitude}: ₹{abs(change):.0f} ({abs(change_percent):.2f}%)
+{change_arrow} {magnitude} CHANGE: ₹{change:+.0f} ({change_percent:+.2f}%)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Previous: ₹{previous_rate:.0f}/g
-Current: ₹{current_rate:.0f}/g
-Change: ₹{change:+.0f}
+💰 Current Rate: ₹{current_rate:,.0f}/g
 
-Type: {notification_type}
-Gap: {minutes_since:.0f} min
-Time: {self.ist_time.strftime('%I:%M %p IST')}"""
-            
-            # Add multi-gram prices
+⏱️ Gap: {minutes_since:.0f} min | 🕐 {self.ist_time.strftime('%I:%M %p')}"""
+
+            # Add multi-gram prices and changes
             if ENABLE_MULTI_GRAM_DISPLAY:
                 multi_gram = self.format_multi_gram_prices(current_rate)
-                message += f"\n\n💰 Quick Prices:\n{multi_gram}"
-            
+                message += f"\n\n💰 Current Prices:\n{multi_gram}"
+
+                multi_gram_change = self.format_multi_gram_change(current_rate, previous_rate)
+                if multi_gram_change:
+                    message += f"\n\n💸 Price Changes:\n{multi_gram_change}"
+
             # Add selling rates
             if ENABLE_SELLING_RATE_DISPLAY:
                 selling_rates = self.format_selling_rates(current_rate)
@@ -613,13 +620,33 @@ Period: {self.current_period.replace('_', ' ').title()}"""
         """Format prices for multiple gram quantities"""
         if not ENABLE_MULTI_GRAM_DISPLAY:
             return ""
-        
+
         prices = []
         for grams in GRAM_QUANTITIES:
             total_price = rate_per_gram * grams
             prices.append(f"{grams}g: ₹{total_price:,.0f}")
-        
+
         return " | ".join(prices)
+
+    def format_multi_gram_change(self, current_rate, previous_rate):
+        """Format price changes for multiple gram quantities"""
+        if not ENABLE_MULTI_GRAM_DISPLAY or current_rate == previous_rate:
+            return ""
+
+        # Determine arrow based on direction
+        if ENABLE_EMOJI_IN_MESSAGES:
+            arrow = "⬆️" if current_rate > previous_rate else "⬇️"
+        else:
+            arrow = "↑" if current_rate > previous_rate else "↓"
+
+        changes = []
+        for grams in GRAM_QUANTITIES:
+            current_price = current_rate * grams
+            previous_price = previous_rate * grams
+            change = current_price - previous_price
+            changes.append(f"{grams}g: {arrow}₹{abs(change):.0f}")
+
+        return " | ".join(changes)
     
     def format_selling_rates(self, rate_per_gram):
         """Format selling rates after jewellery fees"""
@@ -715,8 +742,7 @@ Period: {self.current_period.replace('_', ' ').title()}"""
 
 Current Rate: ₹{current_rate:.0f}/g
 Period: {period.replace('_', ' ').title()}
-Time: {self.ist_time.strftime('%d %b, %I:%M %p IST')}
-Weekend Mode: {self.is_weekend}"""
+Time: {self.ist_time.strftime('%d %b, %I:%M %p IST')}"""
         
         # Add multi-gram prices
         if ENABLE_MULTI_GRAM_DISPLAY:
@@ -744,25 +770,7 @@ Weekend Mode: {self.is_weekend}"""
                 
                 message += f"\n\n📅 Since Yesterday (~{hours_ago:.0f}h ago):\n{daily_direction} ₹{yesterday_change:+.0f} ({yesterday_change_percent:+.2f}%) from ₹{yesterday_rate:.0f}/g"
         
-        message += f"""
-
-🔧 CONFIGURED THRESHOLDS:
-• AKGSMA (9-11 AM): ≥₹{AKGSMA_THRESHOLD_RUPEES} ({AKGSMA_THRESHOLD_PERCENT}%)
-• Evening (6-7 PM): ≥₹{EVENING_THRESHOLD_RUPEES} ({EVENING_THRESHOLD_PERCENT}%)
-• Trading (11 AM-6 PM): ≥₹{TRADING_THRESHOLD_RUPEES} ({TRADING_THRESHOLD_PERCENT}%)
-• Off Hours: ≥₹{OFFHOURS_THRESHOLD_RUPEES} ({OFFHOURS_THRESHOLD_PERCENT}%)
-
-⚡ SPECIAL FEATURES:
-• Micro Alerts: {'Enabled' if ENABLE_MICRO_ALERTS else 'Disabled'} (≥₹{MICRO_ALERT_RUPEES})
-• Rapid Movement: {'Enabled' if ENABLE_RAPID_ALERTS else 'Disabled'} (≥₹{RAPID_MOVEMENT_THRESHOLD} in {RAPID_MOVEMENT_WINDOW_MINUTES}min)
-• Trend Reversals: {'Enabled' if ENABLE_TREND_ALERTS else 'Disabled'} (≥₹{TREND_REVERSAL_THRESHOLD})
-• Stability Alerts: {'Enabled' if ENABLE_STABILITY_ALERTS else 'Disabled'} ({STABILITY_ALERT_MINUTES}min)
-• Hourly Reports: {'Enabled' if ENABLE_HOURLY_REPORTS else 'Disabled'}
-• Yesterday Comparison: {'Enabled' if ENABLE_YESTERDAY_COMPARISON else 'Disabled'}
-• Multi-Gram Display: {'Enabled' if ENABLE_MULTI_GRAM_DISPLAY else 'Disabled'} ({', '.join([f'{g}g' for g in GRAM_QUANTITIES])})
-• Selling Calculator: {'Enabled' if ENABLE_SELLING_RATE_DISPLAY else 'Disabled'} ({', '.join([f'{f}%' for f in SELLING_FEE_PERCENTAGES])} fees)
-
-🔧 Easy to customize by editing configuration variables at top of script!"""
+        message += f""""""
         
         self.send_notifications(message, priority="normal")
     
@@ -940,7 +948,7 @@ if __name__ == "__main__":
     
     if result:
         print(f"✅ Success: ₹{result['rate']} - {result['market_period']}")
-        print(f"📊 Weekend Mode: {result['is_weekend']}")
+        # print(f"📊 Weekend Mode: {result['is_weekend']}")
     else:
         print("❌ Tracking failed")
     
