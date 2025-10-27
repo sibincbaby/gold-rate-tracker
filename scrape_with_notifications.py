@@ -663,10 +663,11 @@ Period: {self.current_period.replace('_', ' ').title()}"""
             for fee_percent in SELLING_FEE_PERCENTAGES:
                 fee_amount = gross_value * (fee_percent / 100)
                 net_amount = gross_value - fee_amount
-                net_values.append(f"{fee_percent}%:₹{net_amount:,.0f}")
+                # Removed comma separator to reduce message length
+                net_values.append(f"{fee_percent}%:₹{net_amount:.0f}")
 
-            # Format line for this gram quantity - ensure all values fit
-            line = f"{grams}g: " + " | ".join(net_values)
+            # Format line for this gram quantity - use compact separator
+            line = f"{grams}g: " + "|".join(net_values)
             lines.append(line)
 
         # Join all lines with newline
@@ -739,7 +740,7 @@ Period: {self.current_period.replace('_', ' ').title()}"""
         """Send initial setup notification with current configuration"""
         emoji = "🚀 " if ENABLE_EMOJI_IN_MESSAGES else ""
         
-        message = f"""{emoji}{NOTIFICATION_TITLE} Started!
+        message = ""f"""
 
 Current Rate: ₹{current_rate:.0f}/g
 Period: {period.replace('_', ' ').title()}
