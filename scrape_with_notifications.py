@@ -663,15 +663,17 @@ Period: {self.current_period.replace('_', ' ').title()}"""
             for fee_percent in SELLING_FEE_PERCENTAGES:
                 fee_amount = gross_value * (fee_percent / 100)
                 net_amount = gross_value - fee_amount
-                # Removed comma separator to reduce message length
+                # Use compact format with space separator instead of pipe
                 net_values.append(f"{fee_percent}%:₹{net_amount:.0f}")
 
-            # Format line for this gram quantity - use compact separator
-            line = f"{grams}g: " + "|".join(net_values)
+            # Format line for this gram quantity - use space separator
+            line = f"{grams}g: " + " ".join(net_values)
             lines.append(line)
 
-        # Join all lines with newline
-        return "\n".join(lines)
+        result = "\n".join(lines)
+        print(f"DEBUG: Selling rates section length: {len(result)} chars")
+        print(f"DEBUG: Selling rates content:\n{result}")
+        return result
     
     def get_yesterday_rate(self):
         """Get rate from approximately 24 hours ago (yesterday)"""
@@ -794,16 +796,19 @@ Will retry on next scheduled run."""
     
     def send_notifications(self, message, priority="normal"):
         """Send notifications via configured channels"""
-        
+
+        print(f"DEBUG: Total message length: {len(message)} characters")
+        print(f"DEBUG: Full message preview:\n{message}\n{'='*60}")
+
         if self.telegram_token and self.telegram_chat_id:
             self.send_telegram(message)
-        
+
         if self.pushover_token and self.pushover_user:
             self.send_pushover(message, priority)
-        
+
         if self.ntfy_topic:
             self.send_ntfy(message, priority)
-        
+
         print(f"📱 Alert ({priority}): {message[:80]}...")
     
     def send_telegram(self, message):
