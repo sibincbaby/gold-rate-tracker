@@ -1,25 +1,25 @@
 {
-  "rate": 12382.0,
+  "rate": 11351.0,
   "currency": "INR",
   "unit": "per gram",
   "purity": "24K",
   "location": "Kerala",
   "source": "https://www.goodreturns.in/gold-rates/kerala.html",
   "success": true,
-  "market_period": "OFF_HOURS",
-  "data_scraped_at": "2025-11-11T00:19:25.498068+05:30",
-  "data_scraped_at_ist": "2025-11-11T00:19:25.498068+05:30",
-  "api_generated_at": "2025-11-11T00:19:35.248615+05:30",
-  "api_generated_at_ist": "2025-11-11T00:19:35.248615+05:30",
-  "data_fetched_at": "2025-11-11T00:19:25.498068+05:30",
-  "data_fetched_at_ist": "2025-11-11T00:19:25.498068+05:30",
-  "api_response_at": "2025-11-11T00:19:35.248615+05:30",
-  "api_response_at_ist": "2025-11-11T00:19:35.248615+05:30",
+  "market_period": "AKGSMA_MORNING_RUSH",
+  "data_scraped_at": "2025-11-11T09:26:39.759281+05:30",
+  "data_scraped_at_ist": "2025-11-11T09:26:39.759281+05:30",
+  "api_generated_at": "2025-11-11T09:26:47.220689+05:30",
+  "api_generated_at_ist": "2025-11-11T09:26:47.220689+05:30",
+  "data_fetched_at": "2025-11-11T09:26:39.759281+05:30",
+  "data_fetched_at_ist": "2025-11-11T09:26:39.759281+05:30",
+  "api_response_at": "2025-11-11T09:26:47.220689+05:30",
+  "api_response_at_ist": "2025-11-11T09:26:47.220689+05:30",
   "data_age": {
-    "seconds": 9,
-    "minutes": 0.2,
+    "seconds": 7,
+    "minutes": 0.1,
     "hours": 0.0,
-    "human_readable": "9 seconds ago"
+    "human_readable": "7 seconds ago"
   },
   "freshness": {
     "status": "very_fresh",
@@ -29,8 +29,8 @@
     "confidence": "very_high"
   },
   "update_info": {
-    "next_update_in_minutes": 179.8,
-    "update_frequency": "Every 3 hours (Off hours)",
+    "next_update_in_minutes": 14.9,
+    "update_frequency": "Every 15 minutes (AKGSMA morning period)",
     "last_update_was_scheduled": true,
     "total_updates_today": 1
   },
