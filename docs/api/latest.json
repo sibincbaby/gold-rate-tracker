@@ -1,25 +1,25 @@
 {
-  "rate": "N/A",
+  "rate": 13931.0,
   "currency": "INR",
   "unit": "per gram",
   "purity": "24K",
   "location": "Kerala",
   "source": "https://www.goodreturns.in/gold-rates/kerala.html",
-  "success": false,
-  "market_period": "UNKNOWN",
-  "data_scraped_at": "2026-01-10T00:25:42.857226+05:30",
-  "data_scraped_at_ist": "2026-01-10T00:25:42.857236+05:30",
-  "api_generated_at": "2026-01-10T00:25:42.857274+05:30",
-  "api_generated_at_ist": "2026-01-10T00:25:42.857274+05:30",
-  "data_fetched_at": "2026-01-10T00:25:42.857226+05:30",
-  "data_fetched_at_ist": "2026-01-10T00:25:42.857236+05:30",
-  "api_response_at": "2026-01-10T00:25:42.857274+05:30",
-  "api_response_at_ist": "2026-01-10T00:25:42.857274+05:30",
+  "success": true,
+  "market_period": "OFF_HOURS",
+  "data_scraped_at": "2026-01-10T03:12:14.346555+05:30",
+  "data_scraped_at_ist": "2026-01-10T03:12:14.346555+05:30",
+  "api_generated_at": "2026-01-10T03:12:23.914269+05:30",
+  "api_generated_at_ist": "2026-01-10T03:12:23.914269+05:30",
+  "data_fetched_at": "2026-01-10T03:12:14.346555+05:30",
+  "data_fetched_at_ist": "2026-01-10T03:12:14.346555+05:30",
+  "api_response_at": "2026-01-10T03:12:23.914269+05:30",
+  "api_response_at_ist": "2026-01-10T03:12:23.914269+05:30",
   "data_age": {
-    "seconds": 0,
-    "minutes": 0.0,
+    "seconds": 9,
+    "minutes": 0.2,
     "hours": 0.0,
-    "human_readable": "0 seconds ago"
+    "human_readable": "9 seconds ago"
   },
   "freshness": {
     "status": "very_fresh",
@@ -29,15 +29,15 @@
     "confidence": "very_high"
   },
   "update_info": {
-    "next_update_in_minutes": 180.0,
+    "next_update_in_minutes": 179.8,
     "update_frequency": "Every 3 hours (Off hours)",
     "last_update_was_scheduled": true,
-    "total_updates_today": 0
+    "total_updates_today": 1
   },
   "data_validity": {
-    "status": "unknown",
+    "status": "fresh",
     "reason": "",
-    "original_timestamp_preserved": false
+    "original_timestamp_preserved": true
   },
   "api_info": {
     "version": "2.1",
