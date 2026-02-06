@@ -1,25 +1,25 @@
 {
-  "rate": "N/A",
+  "rate": 15235.0,
   "currency": "INR",
   "unit": "per gram",
   "purity": "24K",
   "location": "Kerala",
   "source": "https://www.goodreturns.in/gold-rates/kerala.html",
-  "success": false,
-  "market_period": "UNKNOWN",
-  "data_scraped_at": "2026-02-06T13:30:55.047661+05:30",
-  "data_scraped_at_ist": "2026-02-06T13:30:55.047671+05:30",
-  "api_generated_at": "2026-02-06T13:30:55.047718+05:30",
-  "api_generated_at_ist": "2026-02-06T13:30:55.047718+05:30",
-  "data_fetched_at": "2026-02-06T13:30:55.047661+05:30",
-  "data_fetched_at_ist": "2026-02-06T13:30:55.047671+05:30",
-  "api_response_at": "2026-02-06T13:30:55.047718+05:30",
-  "api_response_at_ist": "2026-02-06T13:30:55.047718+05:30",
+  "success": true,
+  "market_period": "ACTIVE_TRADING",
+  "data_scraped_at": "2026-02-06T14:21:45.905687+05:30",
+  "data_scraped_at_ist": "2026-02-06T14:21:45.905687+05:30",
+  "api_generated_at": "2026-02-06T14:21:54.748873+05:30",
+  "api_generated_at_ist": "2026-02-06T14:21:54.748873+05:30",
+  "data_fetched_at": "2026-02-06T14:21:45.905687+05:30",
+  "data_fetched_at_ist": "2026-02-06T14:21:45.905687+05:30",
+  "api_response_at": "2026-02-06T14:21:54.748873+05:30",
+  "api_response_at_ist": "2026-02-06T14:21:54.748873+05:30",
   "data_age": {
-    "seconds": 0,
-    "minutes": 0.0,
+    "seconds": 8,
+    "minutes": 0.1,
     "hours": 0.0,
-    "human_readable": "0 seconds ago"
+    "human_readable": "8 seconds ago"
   },
   "freshness": {
     "status": "very_fresh",
@@ -29,15 +29,15 @@
     "confidence": "very_high"
   },
   "update_info": {
-    "next_update_in_minutes": 30.0,
+    "next_update_in_minutes": 29.9,
     "update_frequency": "Every 30 minutes (Active trading hours)",
     "last_update_was_scheduled": true,
-    "total_updates_today": 0
+    "total_updates_today": 1
   },
   "data_validity": {
-    "status": "unknown",
+    "status": "fresh",
     "reason": "",
-    "original_timestamp_preserved": false
+    "original_timestamp_preserved": true
   },
   "api_info": {
     "version": "2.1",
