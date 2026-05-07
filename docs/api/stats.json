@@ -16,8 +16,8 @@
   "data_quality": {
     "total_data_points": 1,
     "data_completeness": 100.0,
-    "last_updated": "2026-05-07T09:42:07.739497+05:30",
-    "data_age_minutes": 0.2
+    "last_updated": "2026-05-07T11:51:49.807855+05:30",
+    "data_age_minutes": 0.6
   },
-  "generated_at": "2026-05-07T09:42:20.441473+05:30"
+  "generated_at": "2026-05-07T11:52:24.746393+05:30"
 }
