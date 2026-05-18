@@ -1,23 +1,23 @@
 {
-  "current": 15693.0,
+  "current": 15622.0,
   "statistics": {
-    "highest": 15693.0,
-    "lowest": 15693.0,
-    "average": 15693.0,
-    "median": 15693.0,
+    "highest": 15622.0,
+    "lowest": 15622.0,
+    "average": 15622.0,
+    "median": 15622.0,
     "volatility": 0.0
   },
   "trends": {
     "last_24h_change": 0,
     "last_hour_change": 0,
-    "daily_high": 15693.0,
-    "daily_low": 15693.0
+    "daily_high": 15622.0,
+    "daily_low": 15622.0
   },
   "data_quality": {
     "total_data_points": 1,
     "data_completeness": 100.0,
-    "last_updated": "2026-05-18T04:29:01.847916+05:30",
-    "data_age_minutes": 0.2
+    "last_updated": "2026-05-18T10:19:52.413960+05:30",
+    "data_age_minutes": 0.1
   },
-  "generated_at": "2026-05-18T04:29:11.811424+05:30"
+  "generated_at": "2026-05-18T10:20:00.618914+05:30"
 }
