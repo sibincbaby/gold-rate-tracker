@@ -6,21 +6,21 @@
       "unit": "per gram",
       "purity": "24K",
       "location": "Kerala",
-      "timestamp": "2026-06-06T17:39:18.022280+05:30",
-      "ist_time": "2026-06-06T17:39:18.022280+05:30",
+      "timestamp": "2026-06-06T19:44:05.446536+05:30",
+      "ist_time": "2026-06-06T19:44:05.446536+05:30",
       "source": "https://www.goodreturns.in/gold-rates/kerala.html",
       "success": true,
-      "market_period": "ACTIVE_TRADING",
+      "market_period": "OFF_HOURS",
       "is_weekend": true
     }
   ],
   "metadata": {
     "total_entries": 1,
     "date_range": {
-      "oldest": "2026-06-06T17:39:18.022280+05:30",
-      "newest": "2026-06-06T17:39:18.022280+05:30"
+      "oldest": "2026-06-06T19:44:05.446536+05:30",
+      "newest": "2026-06-06T19:44:05.446536+05:30"
     },
-    "api_generated_at": "2026-06-06T17:39:26.042934+05:30",
+    "api_generated_at": "2026-06-06T19:44:14.369758+05:30",
     "data_points_last_24h": 1,
     "average_update_interval_minutes": null
   }
