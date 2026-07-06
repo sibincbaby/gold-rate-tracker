@@ -1,25 +1,25 @@
 {
-  "rate": "N/A",
+  "rate": 14662.0,
   "currency": "INR",
   "unit": "per gram",
   "purity": "24K",
   "location": "Kerala",
   "source": "https://www.goodreturns.in/gold-rates/kerala.html",
-  "success": false,
-  "market_period": "UNKNOWN",
-  "data_scraped_at": "2026-07-06T16:21:19.944959+05:30",
-  "data_scraped_at_ist": "2026-07-06T16:21:19.944972+05:30",
-  "api_generated_at": "2026-07-06T16:21:19.945011+05:30",
-  "api_generated_at_ist": "2026-07-06T16:21:19.945011+05:30",
-  "data_fetched_at": "2026-07-06T16:21:19.944959+05:30",
-  "data_fetched_at_ist": "2026-07-06T16:21:19.944972+05:30",
-  "api_response_at": "2026-07-06T16:21:19.945011+05:30",
-  "api_response_at_ist": "2026-07-06T16:21:19.945011+05:30",
+  "success": true,
+  "market_period": "EVENING_UPDATE",
+  "data_scraped_at": "2026-07-06T18:31:51.067757+05:30",
+  "data_scraped_at_ist": "2026-07-06T18:31:51.067757+05:30",
+  "api_generated_at": "2026-07-06T18:32:01.303284+05:30",
+  "api_generated_at_ist": "2026-07-06T18:32:01.303284+05:30",
+  "data_fetched_at": "2026-07-06T18:31:51.067757+05:30",
+  "data_fetched_at_ist": "2026-07-06T18:31:51.067757+05:30",
+  "api_response_at": "2026-07-06T18:32:01.303284+05:30",
+  "api_response_at_ist": "2026-07-06T18:32:01.303284+05:30",
   "data_age": {
-    "seconds": 0,
-    "minutes": 0.0,
+    "seconds": 10,
+    "minutes": 0.2,
     "hours": 0.0,
-    "human_readable": "0 seconds ago"
+    "human_readable": "10 seconds ago"
   },
   "freshness": {
     "status": "very_fresh",
@@ -29,15 +29,15 @@
     "confidence": "very_high"
   },
   "update_info": {
-    "next_update_in_minutes": 30.0,
-    "update_frequency": "Every 30 minutes (Active trading hours)",
+    "next_update_in_minutes": 14.8,
+    "update_frequency": "Every 15 minutes (Evening update period)",
     "last_update_was_scheduled": true,
-    "total_updates_today": 0
+    "total_updates_today": 1
   },
   "data_validity": {
-    "status": "unknown",
+    "status": "fresh",
     "reason": "",
-    "original_timestamp_preserved": false
+    "original_timestamp_preserved": true
   },
   "api_info": {
     "version": "2.1",
