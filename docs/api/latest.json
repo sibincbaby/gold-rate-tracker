@@ -1,5 +1,12 @@
 {
   "rate": 15589.0,
+  "rate_24k": 15589.0,
+  "rate_22k": 14289.92,
+  "rate_22k_source": "derived",
+  "rates": {
+    "24K": 15589.0,
+    "22K": 14289.92
+  },
   "currency": "INR",
   "unit": "per gram",
   "purity": "24K",
@@ -9,30 +16,30 @@
   "market_period": "OFF_HOURS",
   "data_scraped_at": "2026-08-19T03:18:44.070208+05:30",
   "data_scraped_at_ist": "2026-08-19T03:18:44.070208+05:30",
-  "api_generated_at": "2026-08-19T03:19:07.692378+05:30",
-  "api_generated_at_ist": "2026-08-19T03:19:07.692378+05:30",
+  "api_generated_at": "2026-08-19T07:00:44.965915+05:30",
+  "api_generated_at_ist": "2026-08-19T07:00:44.965915+05:30",
   "data_fetched_at": "2026-08-19T03:18:44.070208+05:30",
   "data_fetched_at_ist": "2026-08-19T03:18:44.070208+05:30",
-  "api_response_at": "2026-08-19T03:19:07.692378+05:30",
-  "api_response_at_ist": "2026-08-19T03:19:07.692378+05:30",
+  "api_response_at": "2026-08-19T07:00:44.965915+05:30",
+  "api_response_at_ist": "2026-08-19T07:00:44.965915+05:30",
   "data_age": {
-    "seconds": 23,
-    "minutes": 0.4,
-    "hours": 0.01,
-    "human_readable": "23 seconds ago"
+    "seconds": 13320,
+    "minutes": 222.0,
+    "hours": 3.7,
+    "human_readable": "3 hours ago"
   },
   "freshness": {
-    "status": "very_fresh",
-    "description": "Very Fresh",
-    "is_fresh": true,
-    "is_very_fresh": true,
-    "confidence": "very_high"
+    "status": "stale",
+    "description": "Stale",
+    "is_fresh": false,
+    "is_very_fresh": false,
+    "confidence": "very_low"
   },
   "update_info": {
-    "next_update_in_minutes": 179.6,
+    "next_update_in_minutes": 138.0,
     "update_frequency": "Every 3 hours (Off hours)",
     "last_update_was_scheduled": true,
-    "total_updates_today": 1
+    "total_updates_today": 2
   },
   "data_validity": {
     "status": "fresh",

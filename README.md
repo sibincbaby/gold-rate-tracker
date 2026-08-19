@@ -1,14 +1,15 @@
 # 🥇 Kerala Gold Rate Tracker
 
-Live 24K gold rate tracking with phone notifications - completely FREE!
+Live 24K **and 22K** gold rate tracking for Kerala, with phone notifications - completely FREE!
 
 ## 🌐 Live Demo
-- **Website**: [https://yourusername.github.io/gold-rate-tracker](https://yourusername.github.io/gold-rate-tracker)
-- **API**: [https://yourusername.github.io/gold-rate-tracker/api/latest.json](https://yourusername.github.io/gold-rate-tracker/api/latest.json)
+- **Website**: [https://sibincbaby.github.io/gold-rate-tracker](https://sibincbaby.github.io/gold-rate-tracker)
+- **API**: [https://sibincbaby.github.io/gold-rate-tracker/api/latest.json](https://sibincbaby.github.io/gold-rate-tracker/api/latest.json)
 
 ## ✨ Features
 
-- 🔄 **Auto-updates** every 2 hours via GitHub Actions
+- 🥇 **24K and 22K (916)** rates, with selling value after jewellery fees
+- 🔄 **Auto-updates** on a schedule tuned to AKGSMA rate-setting hours
 - 📱 **Phone notifications** when rates change significantly (≥₹50 or ≥1%)
 - 📊 **Beautiful web interface** with real-time data
 - 🔌 **REST APIs** for integration
@@ -55,16 +56,22 @@ GET /api/stats.json
 
 ```json
 {
-  "rate": 9742.0,
+  "rate": 15589.0,
+  "rate_24k": 15589.0,
+  "rate_22k": 14290.0,
+  "rate_22k_source": "scraped",
+  "rates": { "24K": 15589.0, "22K": 14290.0 },
   "currency": "INR",
   "unit": "per gram",
-  "purity": "24K",
   "location": "Kerala",
-  "timestamp": "2024-06-28T14:30:00.123456",
   "source": "https://www.goodreturns.in/gold-rates/kerala.html",
   "success": true
 }
 ```
+
+`rate` stays the 24K figure so existing consumers keep working. `rate_22k_source`
+is `scraped` when read from the page and `derived` when computed as 24K × 22/24
+because the page did not yield a trustworthy 22K figure.
 
 ## 🔧 Customization
 
@@ -92,7 +99,10 @@ if abs(change) >= 25 or abs(change_percent) >= 0.5:
 
 ```bash
 # Install dependencies
-pip install selenium beautifulsoup4 requests
+pip install -r requirements.txt
+
+# Run the extraction tests (offline, no network needed)
+python -m unittest discover -s tests -v
 
 # Run scraper
 python scrape_with_notifications.py
@@ -100,6 +110,16 @@ python scrape_with_notifications.py
 # Generate website
 python generate_api_site.py
 ```
+
+### Data files
+
+`data/` holds the tracker's persistent state and **must stay committed** - it is
+what makes change alerts, trend detection and the yesterday comparison work. If
+it is emptied or ignored, every run looks like a first run.
+
+- `data/latest_rate.json` - last reading
+- `data/rate_history.json` - rolling window (last 500 readings)
+- `docs/api/archive.json` - full recovered series since Oct 2025
 
 ## 📱 Phone Notification Setup
 
@@ -126,8 +146,9 @@ python generate_api_site.py
 
 ## 🔍 How It Works
 
-1. **GitHub Actions** runs the scraper every 2 hours
-2. **Selenium** extracts gold rate from GoodReturns.in
+1. **GitHub Actions** runs the scraper on a schedule weighted to Kerala market hours
+2. **Plain HTTP + BeautifulSoup** extracts the 24K and 22K rates from GoodReturns.in
+   (Selenium is only used as a fallback if that fails)
 3. **Comparison** with previous rate triggers notifications
 4. **Data** is saved to JSON files
 5. **Website** is auto-generated and deployed to GitHub Pages

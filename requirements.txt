@@ -1,5 +1,8 @@
-# In your repository root, create requirements.txt with:
-selenium==4.15.0
-beautifulsoup4==4.12.2
-requests==2.31.0
-lxml==4.9.3
+# Primary fetch path: plain HTTP + HTML parsing (no browser needed)
+requests>=2.32.0
+beautifulsoup4>=4.12.3
+
+# Fallback only: used when the plain HTTP fetch fails or returns an
+# unparseable page. Kept so a bot-protection change on the source site
+# does not take the tracker down.
+selenium>=4.25.0

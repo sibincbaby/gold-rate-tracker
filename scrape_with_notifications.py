@@ -86,6 +86,10 @@ ENABLE_SELLING_RATE_DISPLAY = True  # Show actual selling prices after fees
 SELLING_FEE_PERCENTAGES = [2, 3, 5]  # Jewellery fee percentages (2%, 3%, 5%)
 SELLING_GRAM_QUANTITIES = [1, 2, 5, 8, 10]  # Gram quantities for selling calculations
 
+# 🥇 22K GOLD DISPLAY (Kerala jewellery is sold as 22K / 916 hallmark)
+ENABLE_22K_DISPLAY = True         # Show 22K rate alongside 24K in notifications
+ENABLE_22K_SELLING_RATES = True   # Show 22K selling value after jewellery fees
+
 # 🔍 WEEKEND SETTINGS
 WEEKEND_THRESHOLD_RUPEES = 30
 WEEKEND_THRESHOLD_PERCENT = 0.3
@@ -97,68 +101,70 @@ ENABLE_WEEKEND_REDUCED_SENSITIVITY = True
 
 import json
 import os
+import sys
 import requests
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.common.by import By
 import time
 import re
+
+from gold_source import (
+    SOURCE_URL,
+    RateExtractionError,
+    fetch_rates,
+    validate_against_previous,
+)
 
 # Define IST timezone after imports
 IST = ZoneInfo("Asia/Kolkata")
 
 class ConfigurableKeralaGoldTracker:
     def __init__(self):
-        self.url = "https://www.goodreturns.in/gold-rates/kerala.html"
-        self.setup_driver()
-        
+        self.url = SOURCE_URL
+
         # Notification settings from environment
         self.telegram_token = os.environ.get('TELEGRAM_BOT_TOKEN')
         self.telegram_chat_id = os.environ.get('TELEGRAM_CHAT_ID')
         self.pushover_token = os.environ.get('PUSHOVER_TOKEN')
         self.pushover_user = os.environ.get('PUSHOVER_USER')
         self.ntfy_topic = os.environ.get('NTFY_TOPIC')
-        
+
         # Calculate current time and period
         self.ist_time = datetime.now(IST)
         self.current_period = self.get_current_period()
         self.is_weekend = self.ist_time.weekday() >= 5
-        
+
         print(f"🔧 Configured Tracker Initialized")
         print(f"⏰ IST Time: {self.ist_time.strftime('%d %b %Y, %I:%M %p')}")
         print(f"📊 Period: {self.current_period}")
-        # print(f"📅 Weekend Mode: {self.is_weekend}")
-    
-    def setup_driver(self):
-        """Setup Chrome driver with configured delays"""
-        chrome_options = Options()
-        chrome_options.add_argument("--headless")
-        chrome_options.add_argument("--no-sandbox")
-        chrome_options.add_argument("--disable-dev-shm-usage")
-        chrome_options.add_argument("--disable-gpu")
-        chrome_options.add_argument("--disable-extensions")
-        chrome_options.add_argument("--window-size=1920,1080")
-        chrome_options.add_argument("--disable-blink-features=AutomationControlled")
-        chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
-        chrome_options.add_experimental_option('useAutomationExtension', False)
-        
-        import random
-        user_agents = [
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-        ]
-        chrome_options.add_argument(f"--user-agent={random.choice(user_agents)}")
-        
-        self.driver = webdriver.Chrome(options=chrome_options)
-        self.driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
-    
+
+    def load_previous_data(self):
+        """Read the last stored reading, or None on the very first run."""
+        try:
+            with open('data/latest_rate.json', 'r') as f:
+                return json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError, OSError):
+            return None
+
+    def hours_since(self, previous_data):
+        """Hours between the previous reading and now, or None if unknown."""
+        if not previous_data:
+            return None
+        stamp = previous_data.get('timestamp')
+        if not stamp:
+            return None
+        try:
+            previous_time = datetime.fromisoformat(stamp)
+        except ValueError:
+            return None
+        if previous_time.tzinfo is None:
+            previous_time = previous_time.replace(tzinfo=IST)
+        return (self.ist_time - previous_time).total_seconds() / 3600
+
     def get_current_period(self):
         """Determine current market period using configured hours"""
         hour = self.ist_time.hour
-        
+
         if AKGSMA_START_HOUR <= hour < AKGSMA_END_HOUR:
             return "AKGSMA_MORNING_RUSH"
         elif TRADING_START_HOUR <= hour < TRADING_END_HOUR:
@@ -167,15 +173,15 @@ class ConfigurableKeralaGoldTracker:
             return "EVENING_UPDATE"
         else:
             return "OFF_HOURS"
-    
+
     def get_thresholds_for_period(self, period):
         """Get notification thresholds based on current period and configuration"""
-        
+
         # Apply weekend adjustments if enabled
         weekend_multiplier = 1.0
         if self.is_weekend and ENABLE_WEEKEND_REDUCED_SENSITIVITY:
             weekend_multiplier = WEEKEND_THRESHOLD_RUPEES / TRADING_THRESHOLD_RUPEES
-        
+
         if period == "AKGSMA_MORNING_RUSH":
             return {
                 'rupees': AKGSMA_THRESHOLD_RUPEES * weekend_multiplier,
@@ -200,114 +206,74 @@ class ConfigurableKeralaGoldTracker:
                 'percent': OFFHOURS_THRESHOLD_PERCENT * weekend_multiplier,
                 'micro_rupees': 999
             }
-    
+
     def scrape_rate(self):
-        """Main scraping function with configured delays"""
+        """Fetch both karats, sanity-check them, then notify and store."""
+        print(f"🔍 Kerala Gold Tracker - Period: {self.current_period}")
+        print(f"⚙️ Using thresholds: {self.get_thresholds_for_period(self.current_period)}")
+
         try:
-            print(f"🔍 Kerala Gold Tracker - Period: {self.current_period}")
-            print(f"⚙️ Using thresholds: {self.get_thresholds_for_period(self.current_period)}")
-            
-            # Use configured delays
-            import random
-            time.sleep(random.uniform(SCRAPING_DELAY_MIN, SCRAPING_DELAY_MAX))
-            
-            self.driver.get(self.url)
-            time.sleep(random.uniform(PAGE_LOAD_DELAY_MIN, PAGE_LOAD_DELAY_MAX))
-            
-            rate = self.extract_24k_rate()
-            
-            if rate:
-                current_data = {
-                    'rate': rate,
-                    'currency': 'INR',
-                    'unit': 'per gram',
-                    'purity': '24K',
-                    'location': 'Kerala',
-                    'timestamp': self.ist_time.isoformat(),
-                    'ist_time': self.ist_time.isoformat(),
-                    'source': self.url,
-                    'success': True,
-                    'market_period': self.current_period,
-                    'is_weekend': self.is_weekend
-                }
-                
-                # Apply configured notification logic
-                self.check_and_notify_configured(current_data)
-                
-                self.save_data(current_data)
-                
-                print(f"✅ Rate: ₹{rate} - {self.current_period}")
-                return current_data
-            else:
-                self.send_error_notification(f"Failed during {self.current_period}")
-                return None
-                
-        except Exception as e:
-            self.send_error_notification(f"Error ({self.current_period}): {str(e)}")
+            rates = fetch_rates(self.url)
+        except RateExtractionError as exc:
+            self.send_error_notification(f"Could not read rate ({self.current_period}): {exc}")
             return None
-        finally:
-            self.driver.quit()
-    
-    def extract_24k_rate(self):
-        """Extract 24K rate from page"""
-        try:
-            page_source = self.driver.page_source
-            
-            # Try multiple patterns for Kerala 24K gold
-            patterns = [
-                r'24K\s+Gold\s*/g.*?₹\s*([\d,]+)',
-                r'Kerala.*?24K.*?₹\s*([\d,]+)',
-                r'24K.*?₹\s*([\d,]+)',
-                r'24\s*Karat.*?₹\s*([\d,]+)',
-                r'24k.*?₹\s*([\d,]+)'
-            ]
-            
-            for i, pattern in enumerate(patterns, 1):
-                match = re.search(pattern, page_source, re.IGNORECASE | re.DOTALL)
-                if match:
-                    rate = float(match.group(1).replace(',', ''))
-                    print(f"✅ Found via pattern {i}: ₹{rate}")
-                    return rate
-            
-            # Element-based extraction as fallback
-            elements_24k = self.driver.find_elements(By.XPATH, "//*[contains(translate(text(), 'k', 'K'), '24K')]")
-            
-            for element in elements_24k:
-                text = element.text
-                if '₹' in text:
-                    match = re.search(r'₹\s*([\d,]+)', text)
-                    if match:
-                        rate = float(match.group(1).replace(',', ''))
-                        print(f"✅ Found in element: ₹{rate}")
-                        return rate
-                
-                try:
-                    parent = element.find_element(By.XPATH, "..")
-                    parent_text = parent.text
-                    if '₹' in parent_text and '24K' in parent_text:
-                        match = re.search(r'₹\s*([\d,]+)', parent_text)
-                        if match:
-                            rate = float(match.group(1).replace(',', ''))
-                            print(f"✅ Found in parent: ₹{rate}")
-                            return rate
-                except:
-                    pass
-            
-        except Exception as e:
-            print(f"❌ Extraction error: {e}")
-        
-        return None
-    
+        except Exception as exc:
+            self.send_error_notification(f"Error ({self.current_period}): {exc}")
+            return None
+
+        rate = rates['rate_24k']
+        rate_22k = rates['rate_22k']
+
+        # A reading that moved further than gold plausibly can is a bad parse,
+        # not a market event. Drop it rather than storing it and alerting on it.
+        previous_data = self.load_previous_data()
+        ok, reason = validate_against_previous(
+            rate,
+            previous_data.get('rate') if previous_data else None,
+            self.hours_since(previous_data),
+        )
+        if not ok:
+            print(f"🚫 Rejected implausible reading: {reason}")
+            self.send_error_notification(f"Rejected implausible rate: {reason}")
+            return None
+
+        current_data = {
+            'rate': rate,
+            'rate_24k': rate,
+            'rate_22k': rate_22k,
+            'rate_22k_source': rates.get('rate_22k_source', 'scraped'),
+            'currency': 'INR',
+            'unit': 'per gram',
+            'purity': '24K',
+            'location': 'Kerala',
+            'timestamp': self.ist_time.isoformat(),
+            'ist_time': self.ist_time.isoformat(),
+            'source': self.url,
+            'fetch_method': rates.get('fetch_method', 'unknown'),
+            'success': True,
+            'market_period': self.current_period,
+            'is_weekend': self.is_weekend
+        }
+
+        self.check_and_notify_configured(current_data)
+        self.save_data(current_data)
+
+        print(f"✅ 24K: ₹{rate:,.0f}/g | 22K: ₹{rate_22k:,.0f}/g "
+              f"({current_data['rate_22k_source']}) - {self.current_period}")
+        return current_data
+
     def check_and_notify_configured(self, current_data):
         """Notification logic using configured thresholds"""
         try:
-            previous_data = None
-            if os.path.exists('data/latest_rate.json'):
-                with open('data/latest_rate.json', 'r') as f:
-                    previous_data = json.load(f)
-            
+            previous_data = self.load_previous_data()
+
             current_rate = current_data['rate']
             current_period = current_data['market_period']
+
+            # Stashed so the message formatters can show 22K alongside 24K
+            self.current_22k = current_data.get('rate_22k')
+            self.current_22k_source = current_data.get('rate_22k_source', 'scraped')
+            self.previous_22k = previous_data.get('rate_22k') if previous_data else None
             
             if previous_data:
                 previous_rate = previous_data.get('rate', 0)
@@ -472,7 +438,10 @@ Time: {self.ist_time.strftime('%I:%M %p IST')}"""
             # Add selling rates
             if ENABLE_SELLING_RATE_DISPLAY:
                 selling_rates = self.format_selling_rates(current_rate)
-                message += f"\n\n💸 Selling Value (After Fees):\n{selling_rates}"
+                message += f"\n\n💸 24K Selling Value (After Fees):\n{selling_rates}"
+
+            # Add the 22K block (the rate Kerala jewellery actually trades at)
+            message += self.format_22k_section()
             
             # Add yesterday comparison even for stability alerts
             if yesterday_data and ENABLE_YESTERDAY_COMPARISON:
@@ -527,7 +496,10 @@ Time: {self.ist_time.strftime('%I:%M %p IST')}"""
             # Add selling rates
             if ENABLE_SELLING_RATE_DISPLAY:
                 selling_rates = self.format_selling_rates(current_rate)
-                message += f"\n\n💸 Selling Value (After Fees):\n{selling_rates}"
+                message += f"\n\n💸 24K Selling Value (After Fees):\n{selling_rates}"
+
+            # Add the 22K block (the rate Kerala jewellery actually trades at)
+            message += self.format_22k_section()
             
             # Add yesterday comparison
             if yesterday_data and ENABLE_YESTERDAY_COMPARISON:
@@ -648,6 +620,39 @@ Period: {self.current_period.replace('_', ' ').title()}"""
 
         return " | ".join(changes)
     
+    def format_22k_section(self):
+        """
+        Build the 22K block for a notification.
+
+        Kerala jewellery is sold as 22K (916 hallmark), so this is the number
+        that matters when actually buying or selling ornaments.
+        """
+        if not ENABLE_22K_DISPLAY:
+            return ""
+
+        rate_22k = getattr(self, 'current_22k', None)
+        if not rate_22k:
+            return ""
+
+        suffix = " (est.)" if getattr(self, 'current_22k_source', 'scraped') == 'derived' else ""
+        section = f"\n\n🥇 22K (916) Rate: ₹{rate_22k:,.0f}/g{suffix}"
+
+        previous_22k = getattr(self, 'previous_22k', None)
+        if previous_22k:
+            change = rate_22k - previous_22k
+            if change:
+                arrow = "⬆️" if change > 0 else "⬇️"
+                percent = (change / previous_22k) * 100
+                section += f"\n{arrow} ₹{change:+,.0f} ({percent:+.2f}%)"
+
+        if ENABLE_MULTI_GRAM_DISPLAY:
+            section += f"\n{self.format_multi_gram_prices(rate_22k)}"
+
+        if ENABLE_22K_SELLING_RATES and ENABLE_SELLING_RATE_DISPLAY:
+            section += f"\n\n💸 22K Selling Value (After Fees):\n{self.format_selling_rates(rate_22k)}"
+
+        return section
+
     def format_selling_rates(self, rate_per_gram):
         """Format selling rates after jewellery fees"""
         if not ENABLE_SELLING_RATE_DISPLAY:
@@ -670,10 +675,7 @@ Period: {self.current_period.replace('_', ' ').title()}"""
             line = f"{grams}g: " + " ".join(net_values)
             lines.append(line)
 
-        result = "\n".join(lines)
-        print(f"DEBUG: Selling rates section length: {len(result)} chars")
-        print(f"DEBUG: Selling rates content:\n{result}")
-        return result
+        return "\n".join(lines)
     
     def get_yesterday_rate(self):
         """Get rate from approximately 24 hours ago (yesterday)"""
@@ -742,7 +744,7 @@ Period: {self.current_period.replace('_', ' ').title()}"""
         """Send initial setup notification with current configuration"""
         emoji = "🚀 " if ENABLE_EMOJI_IN_MESSAGES else ""
         
-        message = ""f"""
+        message = f"""{emoji}{NOTIFICATION_TITLE}
 
 Current Rate: ₹{current_rate:.0f}/g
 Period: {period.replace('_', ' ').title()}
@@ -756,7 +758,9 @@ Time: {self.ist_time.strftime('%d %b, %I:%M %p IST')}"""
         # Add selling rates
         if ENABLE_SELLING_RATE_DISPLAY:
             selling_rates = self.format_selling_rates(current_rate)
-            message += f"\n\n💸 Selling Value (After Fees):\n{selling_rates}"
+            message += f"\n\n💸 24K Selling Value (After Fees):\n{selling_rates}"
+
+        message += self.format_22k_section()
         
         # Add yesterday comparison if available
         if ENABLE_YESTERDAY_COMPARISON:
@@ -955,8 +959,10 @@ if __name__ == "__main__":
     
     if result:
         print(f"✅ Success: ₹{result['rate']} - {result['market_period']}")
-        # print(f"📊 Weekend Mode: {result['is_weekend']}")
     else:
+        # Exit non-zero so a failed scrape shows up as a red run instead of
+        # a green one that quietly published nothing.
         print("❌ Tracking failed")
+        sys.exit(1)
     
     print("\n🔧 To customize alerts, edit the configuration variables at the top of this file!")

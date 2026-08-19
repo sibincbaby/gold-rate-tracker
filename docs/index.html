@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kerala 24K Gold Rate API with Real Fetch Time</title>
-    <meta name="description" content="Kerala 24K gold rate API with real data fetch timing. Current: ₹15589.0/gram">
+    <title>Kerala Gold Rate API - 24K &amp; 22K</title>
+    <meta name="description" content="Kerala 24K and 22K gold rate API with real data fetch timing. 24K: ₹15,589/gram, 22K: ₹14,290/gram">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🥇</text></svg>">
     
     <style>
@@ -40,6 +40,29 @@
             border: 1px solid rgba(255, 255, 255, 0.18);
         }
         
+        .karat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 24px;
+            align-items: center;
+        }
+
+        .karat + .karat {
+            border-left: 1px solid rgba(255, 255, 255, 0.18);
+        }
+
+        @media (max-width: 620px) {
+            .karat + .karat {
+                border-left: none;
+                border-top: 1px solid rgba(255, 255, 255, 0.18);
+                padding-top: 20px;
+            }
+        }
+
+        .rate-22k {
+            color: #ffb347;
+        }
+
         .current-rate {
             font-size: 4rem;
             font-weight: bold;
@@ -59,13 +82,13 @@
             border-radius: 15px;
             padding: 20px;
             margin: 20px 0;
-            border-left: 5px solid #00ff00;
+            border-left: 5px solid #FF6B6B;
         }
         
         .freshness-status {
             font-size: 1.2rem;
             font-weight: bold;
-            color: #00ff00;
+            color: #FF6B6B;
         }
         
         .timing-grid {
@@ -176,32 +199,40 @@
         </div>
         
         <div class="rate-card">
-            <div class="current-rate">₹15589.0</div>
-            <div class="rate-unit">per gram (24K)</div>
+            <div class="karat-grid">
+                <div class="karat">
+                    <div class="current-rate">₹15,589</div>
+                    <div class="rate-unit">per gram (24K)</div>
+                </div>
+                <div class="karat">
+                    <div class="current-rate rate-22k">₹14,290</div>
+                    <div class="rate-unit">per gram (22K &middot; estimated from 24K)</div>
+                </div>
+            </div>
             
             <div class="freshness-indicator">
                 <div class="freshness-status">
-                    Very Fresh Data
+                    Stale Data
                 </div>
-                <div>Last fetched: 23 seconds ago</div>
-                <div>Confidence: Very High</div>
+                <div>Last fetched: 3 hours ago</div>
+                <div>Confidence: Very Low</div>
             </div>
             
             <div class="timing-grid">
                 <div class="timing-item">
-                    <div class="timing-value">0.4</div>
+                    <div class="timing-value">222.0</div>
                     <div class="timing-label">Minutes Since Fetch</div>
                 </div>
                 <div class="timing-item">
-                    <div class="timing-value">179.6</div>
+                    <div class="timing-value">138.0</div>
                     <div class="timing-label">Next Update (min)</div>
                 </div>
                 <div class="timing-item">
-                    <div class="timing-value">1</div>
+                    <div class="timing-value">2</div>
                     <div class="timing-label">Updates Today</div>
                 </div>
                 <div class="timing-item">
-                    <div class="timing-value">Very High</div>
+                    <div class="timing-value">Very Low</div>
                     <div class="timing-label">Data Confidence</div>
                 </div>
             </div>
@@ -249,8 +280,8 @@
                 <h3>📊 Current Schedule</h3>
                 <div id="schedule-info">
                     <p><strong>Current Period:</strong> Every 3 hours (Off hours)</p>
-                    <p><strong>Next Update:</strong> ~179.6 minutes</p>
-                    <p><strong>Updates Today:</strong> 1 times</p>
+                    <p><strong>Next Update:</strong> ~138.0 minutes</p>
+                    <p><strong>Updates Today:</strong> 2 times</p>
                 </div>
             </div>
             
@@ -259,16 +290,17 @@
                 <div class="endpoint">
 {
   "rate": 15589.0,
+  "rate_22k": 14289.92,
   "data_fetched_at": "2026-08-19T03:18:44.070208+05:30",
   "data_age": {
-    "minutes": 0.4,
-    "human_readable": "23 seconds ago"
+    "minutes": 222.0,
+    "human_readable": "3 hours ago"
   },
   "freshness": {
-    "status": "very_fresh",
-    "confidence": "very_high"
+    "status": "stale",
+    "confidence": "very_low"
   },
-  "next_update_in_minutes": 179.6
+  "next_update_in_minutes": 138.0
 }
                 </div>
             </div>

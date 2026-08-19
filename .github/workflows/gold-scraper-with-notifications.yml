@@ -1,61 +1,70 @@
-name: Kerala Gold Rate Tracker - Configurable with Caching
+name: Kerala Gold Rate Tracker
 
 on:
   schedule:
-    # MORNING RUSH: Every 15 minutes during AKGSMA rate setting (9-11 AM IST)
-    - cron: '30,45 3 * * *'      # 9:00, 9:15 AM IST
-    - cron: '0,15,30,45 4 * * *'  # 9:30, 9:45, 10:00, 10:15 AM IST
-    - cron: '0,15,30 5 * * *'     # 10:30, 10:45, 11:00 AM IST
-    
-    # MARKET HOURS: Every 30 minutes during active trading (11 AM - 6 PM IST)
-    - cron: '30 5-12 * * *'       # Every hour at :30
-    - cron: '0 6-12 * * *'        # Every hour at :00
-    
-    # EVENING RUSH: Every 15 minutes during evening updates (6-7 PM IST)
-    - cron: '30,45 12 * * *'      # 6:00, 6:15 PM IST
-    - cron: '0,15,30 13 * * *'    # 6:30, 6:45, 7:00 PM IST
-    
-    # OFF HOURS: Every 3 hours during low activity
-    - cron: '30 15,18,21,0 * * *' # 9:00 PM, 12:00 AM, 3:00 AM, 6:00 AM IST
-    
-    # WEEKEND: Reduced frequency
-    - cron: '0 2,6,10,14,18,22 * * 0,6'  # Every 4 hours on Sat/Sun
-  
-  workflow_dispatch: # Manual trigger
+    # Times are UTC. IST is UTC+5:30, so :00 IST == :30 UTC.
+    # Entries are kept non-overlapping on purpose - two crons firing in the same
+    # minute used to start two runs that both committed, and the second push was
+    # rejected as non-fast-forward, which is what turned runs red.
+
+    # AKGSMA morning rate setting, every 15 min (9:00-11:00 AM IST)
+    - cron: '30,45 3 * * *'        # 09:00, 09:15 IST
+    - cron: '0,15,30,45 4 * * *'   # 09:30, 09:45, 10:00, 10:15 IST
+    - cron: '0,15 5 * * *'         # 10:30, 10:45 IST
+
+    # Active trading, every 30 min (11:00 AM - 6:00 PM IST)
+    - cron: '30 5-11 * * *'        # 11:00 ... 17:00 IST
+    - cron: '0 6-12 * * *'         # 11:30 ... 18:00 IST
+
+    # Evening updates, every 15 min (6:15 - 7:00 PM IST)
+    - cron: '45 12 * * *'          # 18:15 IST
+    - cron: '0,15,30 13 * * *'     # 18:30, 18:45, 19:00 IST
+
+    # Off hours, every 3 hours
+    - cron: '30 15,18,21,0 * * *'  # 21:00, 00:00, 03:00, 06:00 IST
+
+  workflow_dispatch:
 
 permissions:
   contents: write
+
+# Serialise runs. Scheduled triggers can still bunch up, and two jobs committing
+# to the same branch at once is what produced the push failures.
+concurrency:
+  group: gold-rate-tracker
+  cancel-in-progress: false
 
 jobs:
   scrape-and-notify:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    
+
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
-      with:
-        token: ${{ secrets.GITHUB_TOKEN }}
-      
-    - name: Set up Python with caching
-      uses: actions/setup-python@v4
+      uses: actions/checkout@v5
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
       with:
         python-version: '3.11'
         cache: 'pip'
         cache-dependency-path: 'requirements.txt'
-        
-    - name: Install dependencies from requirements.txt
+
+    - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        
-    - name: Setup Chrome
-      uses: browser-actions/setup-chrome@latest
-      
-    - name: Setup ChromeDriver
-      uses: nanasess/setup-chromedriver@master
-      
-    - name: Run configurable Kerala scraper
+
+    - name: Run extraction tests
+      run: python -m unittest discover -s tests -v
+
+    # No Chrome/ChromeDriver setup steps: the scraper fetches over plain HTTP and
+    # only falls back to Selenium if that fails. ubuntu-latest ships Chrome, and
+    # Selenium Manager resolves a matching driver by itself - which also removes
+    # the old dependency on nanasess/setup-chromedriver@master, a moving branch
+    # that could change under us at any time.
+
+    - name: Scrape Kerala gold rates
       timeout-minutes: 6
       run: python scrape_with_notifications.py
       env:
@@ -64,23 +73,31 @@ jobs:
         PUSHOVER_TOKEN: ${{ secrets.PUSHOVER_TOKEN }}
         PUSHOVER_USER: ${{ secrets.PUSHOVER_USER }}
         NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
-        
+
     - name: Generate API and website
       run: python generate_api_site.py
-        
-    # - name: Deploy to GitHub Pages
-    #   uses: peaceiris/actions-gh-pages@v4
-    #   with:
-    #     github_token: ${{ secrets.GITHUB_TOKEN }}
-    #     publish_dir: ./docs
-    #     force_orphan: true
-        
+
     - name: Commit results
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
         git add -A
-        if ! git diff --staged --quiet; then
-          git commit -m "Kerala update: $(date '+%Y-%m-%d %H:%M UTC') - $(TZ='Asia/Kolkata' date '+%I:%M %p IST')"
-          git push
+        if git diff --staged --quiet; then
+          echo "No changes to commit"
+          exit 0
         fi
+        git commit -m "Kerala update: $(date '+%Y-%m-%d %H:%M UTC') - $(TZ='Asia/Kolkata' date '+%I:%M %p IST')"
+
+        # Rebase-and-retry: another run may have landed a commit while this one
+        # was scraping. Rebasing keeps our new data point instead of dropping it.
+        for attempt in 1 2 3 4 5; do
+          if git push; then
+            echo "Pushed on attempt $attempt"
+            exit 0
+          fi
+          echo "Push failed (attempt $attempt), rebasing onto latest main..."
+          git pull --rebase --autostash origin main || exit 1
+          sleep $((attempt * 3))
+        done
+        echo "Could not push after 5 attempts"
+        exit 1

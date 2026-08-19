@@ -1,0 +1,16 @@
+{
+  "rate": 15589.0,
+  "currency": "INR",
+  "unit": "per gram",
+  "purity": "24K",
+  "location": "Kerala",
+  "timestamp": "2026-08-19T03:18:44.070208+05:30",
+  "ist_time": "2026-08-19T03:18:44.070208+05:30",
+  "source": "https://www.goodreturns.in/gold-rates/kerala.html",
+  "success": true,
+  "market_period": "OFF_HOURS",
+  "is_weekend": false,
+  "rate_24k": 15589.0,
+  "rate_22k": 14289.92,
+  "rate_22k_source": "derived"
+}

@@ -117,9 +117,22 @@ def generate_enhanced_api_and_site():
         freshness_text = "Stale"
     
     # Enhanced latest rate API with comprehensive timing info
+    rate_24k = latest.get('rate_24k', latest.get('rate'))
+    rate_22k = latest.get('rate_22k')
+    if rate_22k is None and isinstance(rate_24k, (int, float)):
+        # Older entries predate 22K scraping; derive so the field is always present.
+        rate_22k = round(rate_24k * 22 / 24, 2)
+
     enhanced_latest = {
-        # Original data
+        # Original data ('rate' stays 24K so existing API consumers keep working)
         'rate': latest.get('rate'),
+        'rate_24k': rate_24k,
+        'rate_22k': rate_22k,
+        'rate_22k_source': latest.get('rate_22k_source', 'derived'),
+        'rates': {
+            '24K': rate_24k,
+            '22K': rate_22k,
+        },
         'currency': latest.get('currency', 'INR'),
         'unit': latest.get('unit', 'per gram'),
         'purity': latest.get('purity', '24K'),
@@ -209,8 +222,17 @@ def generate_enhanced_api_and_site():
     if history:
         rates = [entry['rate'] for entry in history if isinstance(entry.get('rate'), (int, float))]
         if rates:
+            rates_22k = [entry['rate_22k'] for entry in history
+                         if isinstance(entry.get('rate_22k'), (int, float))]
             stats = {
                 'current': latest.get('rate'),
+                'current_24k': rate_24k,
+                'current_22k': rate_22k,
+                'statistics_22k': {
+                    'highest': max(rates_22k),
+                    'lowest': min(rates_22k),
+                    'average': round(sum(rates_22k) / len(rates_22k), 2),
+                } if rates_22k else None,
                 'statistics': {
                     'highest': max(rates),
                     'lowest': min(rates),
@@ -400,6 +422,13 @@ def generate_enhanced_website(latest_data, history_data, stats_data):
     """Generate enhanced website with timing information"""
     
     current_rate = latest_data.get('rate', 'N/A')
+    current_rate = f"{current_rate:,.0f}" if isinstance(current_rate, (int, float)) else "N/A"
+    raw_rate_json = latest_data.get('rate') if isinstance(latest_data.get('rate'), (int, float)) else "null"
+    rate_22k = latest_data.get('rate_22k')
+    rate_22k_display = f"{rate_22k:,.0f}" if isinstance(rate_22k, (int, float)) else "N/A"
+    rate_22k_note = "estimated from 24K" if latest_data.get('rate_22k_source') == 'derived' else "916 hallmark"
+    raw_22k_json = rate_22k if isinstance(rate_22k, (int, float)) else "null"
+
     data_age = latest_data.get('data_age', {})
     freshness = latest_data.get('freshness', {})
     update_info = latest_data.get('update_info', {})
@@ -418,8 +447,8 @@ def generate_enhanced_website(latest_data, history_data, stats_data):
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kerala 24K Gold Rate API with Real Fetch Time</title>
-    <meta name="description" content="Kerala 24K gold rate API with real data fetch timing. Current: ₹{current_rate}/gram">
+    <title>Kerala Gold Rate API - 24K &amp; 22K</title>
+    <meta name="description" content="Kerala 24K and 22K gold rate API with real data fetch timing. 24K: ₹{current_rate}/gram, 22K: ₹{rate_22k_display}/gram">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🥇</text></svg>">
     
     <style>
@@ -455,6 +484,29 @@ def generate_enhanced_website(latest_data, history_data, stats_data):
             border: 1px solid rgba(255, 255, 255, 0.18);
         }}
         
+        .karat-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 24px;
+            align-items: center;
+        }}
+
+        .karat + .karat {{
+            border-left: 1px solid rgba(255, 255, 255, 0.18);
+        }}
+
+        @media (max-width: 620px) {{
+            .karat + .karat {{
+                border-left: none;
+                border-top: 1px solid rgba(255, 255, 255, 0.18);
+                padding-top: 20px;
+            }}
+        }}
+
+        .rate-22k {{
+            color: #ffb347;
+        }}
+
         .current-rate {{
             font-size: 4rem;
             font-weight: bold;
@@ -591,8 +643,16 @@ def generate_enhanced_website(latest_data, history_data, stats_data):
         </div>
         
         <div class="rate-card">
-            <div class="current-rate">₹{current_rate}</div>
-            <div class="rate-unit">per gram (24K)</div>
+            <div class="karat-grid">
+                <div class="karat">
+                    <div class="current-rate">₹{current_rate}</div>
+                    <div class="rate-unit">per gram (24K)</div>
+                </div>
+                <div class="karat">
+                    <div class="current-rate rate-22k">₹{rate_22k_display}</div>
+                    <div class="rate-unit">per gram (22K &middot; {rate_22k_note})</div>
+                </div>
+            </div>
             
             <div class="freshness-indicator">
                 <div class="freshness-status">
@@ -673,7 +733,8 @@ def generate_enhanced_website(latest_data, history_data, stats_data):
                 <h3>🔧 Sample Enhanced Response</h3>
                 <div class="endpoint">
 {{
-  "rate": {current_rate},
+  "rate": {raw_rate_json},
+  "rate_22k": {raw_22k_json},
   "data_fetched_at": "{latest_data.get('data_fetched_at', '')}",
   "data_age": {{
     "minutes": {data_age.get('minutes', 0):.1f},
