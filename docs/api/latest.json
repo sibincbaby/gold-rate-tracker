@@ -7,19 +7,19 @@
   "source": "https://www.goodreturns.in/gold-rates/kerala.html",
   "success": true,
   "market_period": "OFF_HOURS",
-  "data_scraped_at": "2026-11-07T23:24:03.459301+05:30",
-  "data_scraped_at_ist": "2026-11-07T23:24:03.459301+05:30",
-  "api_generated_at": "2026-11-07T23:24:33.464029+05:30",
-  "api_generated_at_ist": "2026-11-07T23:24:33.464029+05:30",
-  "data_fetched_at": "2026-11-07T23:24:03.459301+05:30",
-  "data_fetched_at_ist": "2026-11-07T23:24:03.459301+05:30",
-  "api_response_at": "2026-11-07T23:24:33.464029+05:30",
-  "api_response_at_ist": "2026-11-07T23:24:33.464029+05:30",
+  "data_scraped_at": "2026-11-08T01:01:57.739225+05:30",
+  "data_scraped_at_ist": "2026-11-08T01:01:57.739225+05:30",
+  "api_generated_at": "2026-11-08T01:02:50.047080+05:30",
+  "api_generated_at_ist": "2026-11-08T01:02:50.047080+05:30",
+  "data_fetched_at": "2026-11-08T01:01:57.739225+05:30",
+  "data_fetched_at_ist": "2026-11-08T01:01:57.739225+05:30",
+  "api_response_at": "2026-11-08T01:02:50.047080+05:30",
+  "api_response_at_ist": "2026-11-08T01:02:50.047080+05:30",
   "data_age": {
-    "seconds": 30,
-    "minutes": 0.5,
+    "seconds": 52,
+    "minutes": 0.9,
     "hours": 0.01,
-    "human_readable": "30 seconds ago"
+    "human_readable": "52 seconds ago"
   },
   "freshness": {
     "status": "very_fresh",
@@ -29,7 +29,7 @@
     "confidence": "very_high"
   },
   "update_info": {
-    "next_update_in_minutes": 179.5,
+    "next_update_in_minutes": 179.1,
     "update_frequency": "Every 3 hours (Off hours)",
     "last_update_was_scheduled": true,
     "total_updates_today": 1
