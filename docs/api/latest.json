@@ -6,20 +6,20 @@
   "location": "Kerala",
   "source": "https://www.goodreturns.in/gold-rates/kerala.html",
   "success": true,
-  "market_period": "OFF_HOURS",
-  "data_scraped_at": "2026-11-22T06:59:11.874045+05:30",
-  "data_scraped_at_ist": "2026-11-22T06:59:11.874045+05:30",
-  "api_generated_at": "2026-11-22T06:59:22.155324+05:30",
-  "api_generated_at_ist": "2026-11-22T06:59:22.155324+05:30",
-  "data_fetched_at": "2026-11-22T06:59:11.874045+05:30",
-  "data_fetched_at_ist": "2026-11-22T06:59:11.874045+05:30",
-  "api_response_at": "2026-11-22T06:59:22.155324+05:30",
-  "api_response_at_ist": "2026-11-22T06:59:22.155324+05:30",
+  "market_period": "ACTIVE_TRADING",
+  "data_scraped_at": "2026-11-22T15:06:37.808108+05:30",
+  "data_scraped_at_ist": "2026-11-22T15:06:37.808108+05:30",
+  "api_generated_at": "2026-11-22T15:06:46.956617+05:30",
+  "api_generated_at_ist": "2026-11-22T15:06:46.956617+05:30",
+  "data_fetched_at": "2026-11-22T15:06:37.808108+05:30",
+  "data_fetched_at_ist": "2026-11-22T15:06:37.808108+05:30",
+  "api_response_at": "2026-11-22T15:06:46.956617+05:30",
+  "api_response_at_ist": "2026-11-22T15:06:46.956617+05:30",
   "data_age": {
-    "seconds": 10,
+    "seconds": 9,
     "minutes": 0.2,
     "hours": 0.0,
-    "human_readable": "10 seconds ago"
+    "human_readable": "9 seconds ago"
   },
   "freshness": {
     "status": "very_fresh",
@@ -29,8 +29,8 @@
     "confidence": "very_high"
   },
   "update_info": {
-    "next_update_in_minutes": 179.8,
-    "update_frequency": "Every 3 hours (Off hours)",
+    "next_update_in_minutes": 29.8,
+    "update_frequency": "Every 30 minutes (Active trading hours)",
     "last_update_was_scheduled": true,
     "total_updates_today": 1
   },
